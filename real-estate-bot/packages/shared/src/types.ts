@@ -238,6 +238,92 @@ export interface RAGResponse {
   }>;
 }
 
+// Lead types
+export type LeadStatus = 'new' | 'qualified' | 'contacted' | 'sold' | 'rejected';
+export type LeadQuality = 'hot' | 'warm' | 'cold';
+
+export interface Lead {
+  id: string;
+  userId: string;
+  status: LeadStatus;
+  quality: LeadQuality;
+  score: number; // 0-100
+  
+  // Contact info
+  phone?: string;
+  name?: string;
+  email?: string;
+  telegramUsername?: string;
+  
+  // Requirements
+  budget: {
+    min?: number;
+    max?: number;
+  };
+  locations: string[];
+  rooms?: number[];
+  area?: {
+    min?: number;
+    max?: number;
+  };
+  type: 'new' | 'secondary' | 'any';
+  purpose: 'life' | 'invest';
+  
+  // Behavior data
+  searchesCount: number;
+  viewedListings: string[];
+  lastActivity: Date;
+  engagementScore: number;
+  
+  // Source
+  source: string;
+  utmParams?: Record<string, string>;
+  
+  // Sale info
+  soldTo?: string; // Partner who bought the lead
+  soldAt?: Date;
+  price?: number;
+  
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Lead buyer types
+export interface LeadBuyer {
+  id: string;
+  name: string;
+  type: 'agency' | 'developer' | 'broker';
+  
+  // Preferences
+  budgetRange?: {
+    min?: number;
+    max?: number;
+  };
+  locations?: string[];
+  leadTypes?: ('new' | 'secondary')[];
+  minQuality?: LeadQuality;
+  
+  // Pricing
+  pricePerLead: {
+    hot: number;
+    warm: number;
+    cold: number;
+  };
+  
+  // Limits
+  dailyLimit?: number;
+  monthlyLimit?: number;
+  currentDaily: number;
+  currentMonthly: number;
+  
+  // API integration
+  webhookUrl?: string;
+  apiKey?: string;
+  
+  active: boolean;
+  createdAt: Date;
+}
+
 // Provider types
 export interface ListingsProvider {
   name: string;

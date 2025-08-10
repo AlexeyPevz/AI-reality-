@@ -197,6 +197,23 @@ export async function quickInterview(conversation: Conversation<BotContext>, ctx
   const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
   analytics.trackInterviewCompleted(ctx.session.userId!, 'quick', durationSeconds);
 
+  // Generate lead after interview
+  try {
+    const { leadService } = await import('../services/lead.service');
+    const { leadDistribution } = await import('../services/lead-distribution.service');
+    
+    const lead = await leadService.createOrUpdateLead(ctx.session.userId!);
+    console.log(`Lead created: ${lead.id}, quality: ${lead.quality}, score: ${lead.score}`);
+    
+    // Show potential revenue
+    const potentialRevenue = leadDistribution.calculatePotentialRevenue(lead);
+    if (potentialRevenue > 0) {
+      console.log(`Potential revenue: ${potentialRevenue} руб`);
+    }
+  } catch (error) {
+    console.error('Lead generation error:', error);
+  }
+
   // Trigger search
   ctx.session.currentState = 'search_pending';
 }
