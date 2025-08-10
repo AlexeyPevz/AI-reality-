@@ -14,14 +14,20 @@ model User {
   tgId      BigInt   @unique
   phone     String?
   email     String?
+  firstName String?
+  lastName  String?
+  username  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  meta      Json?
 
   preferences     Preferences[]
   savedQueries    SavedQuery[]
   recommendations Recommendation[]
   clicks          Click[]
   feedback        Feedback[]
+  subscriptions   Subscription[]
+  notifications   Notification[]
 
   @@index([tgId])
 }
@@ -34,11 +40,13 @@ model Preferences {
   budgetMin Float?
   budgetMax Float?
   locations String[]
+  districts String[]
   commutePoints Json[] // CommutePoint[]
   transportMode String? // 'car' | 'public' | 'walk'
   rooms     Int[]
   areaMin   Float?
   areaMax   Float?
+  propertyType String? // 'new' | 'secondary' | 'any'
   newBuilding Boolean?
   parkingRequired Boolean?
   createdAt DateTime @default(now())
@@ -46,6 +54,7 @@ model Preferences {
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   savedQueries SavedQuery[]
+  subscriptions Subscription[]
 
   @@index([userId])
 }
@@ -65,56 +74,7 @@ model SavedQuery {
   @@index([userId, status])
 }
 
-model ListingCache {
-  id         String   @id @default(uuid())
-  provider   String
-  externalId String
-  raw        Json
-  normalized Json     // Listing object
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 
-  recommendations Recommendation[]
-  clicks          Click[]
-
-  @@unique([provider, externalId])
-  @@index([provider, updatedAt])
-}
-
-model Recommendation {
-  id          String   @id @default(uuid())
-  userId      String
-  listingId   String
-  matchScore  Float
-  breakdown   Json     // MatchBreakdown
-  explanation String
-  createdAt   DateTime @default(now())
-
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing  ListingCache @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  feedback Feedback[]
-
-  @@index([userId, matchScore])
-  @@index([userId, createdAt])
-}
-
-model Click {
-  id          String   @id @default(uuid())
-  userId      String
-  listingId   String
-  utmSource   String?
-  utmMedium   String?
-  utmCampaign String?
-  sessionId   String
-  createdAt   DateTime @default(now())
-
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing ListingCache @relation(fields: [listingId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([sessionId])
-  @@index([createdAt])
-}
 
 model Feedback {
   id               String   @id @default(uuid())
@@ -152,4 +112,113 @@ model KnowledgeDocument {
   @@index([title])
   @@index([type])
   @@index([parentId])
+}
+
+model Subscription {
+  id                   String         @id @default(uuid())
+  userId               String
+  preferencesId        String
+  active               Boolean        @default(true)
+  notificationsEnabled Boolean        @default(true)
+  frequency            String         @default("daily")
+  lastChecked          DateTime?
+  minScore             Float          @default(7.0)
+  maxPriceIncrease     Float?
+  createdAt            DateTime       @default(now())
+
+  // Relations
+  user                 User           @relation(fields: [userId], references: [id])
+  preferences          Preferences    @relation(fields: [preferencesId], references: [id])
+  notifications        Notification[]
+
+  @@index([userId])
+  @@index([preferencesId])
+}
+
+model Listing {
+  id          String   @id @default(uuid())
+  externalId  String
+  provider    String
+  title       String
+  price       Float
+  address     String
+  district    String?
+  metro       String?
+  metroDistance Json?  // { minutes: number, transport: string }
+  rooms       Int
+  area        Float
+  floor       Int?
+  floors      Int?
+  description String?  @db.Text
+  images      String[]
+  url         String
+  source      String
+  coordinates Json?    // { lat: number, lng: number }
+  features    String[]
+  partnerData Json?
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  recommendations Recommendation[]
+  clicks          Click[]
+  notifications   Notification[]
+
+  @@unique([provider, externalId])
+  @@index([provider])
+  @@index([publishedAt])
+}
+
+model Recommendation {
+  id          String   @id @default(uuid())
+  userId      String
+  listingId   String
+  score       Float
+  breakdown   Json     // MatchBreakdown
+  explanation String   @db.Text
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing  Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  feedback Feedback[]
+
+  @@index([userId, score])
+  @@index([userId, createdAt])
+}
+
+model Click {
+  id          String   @id @default(uuid())
+  userId      String
+  listingId   String
+  url         String
+  source      String?  // bot, mini_app, etc
+  timestamp   DateTime @default(now())
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+model Notification {
+  id             String       @id @default(uuid())
+  userId         String
+  subscriptionId String?
+  listingId      String?
+  type           String       // new_listing, price_drop, etc
+  message        String       @db.Text
+  sentAt         DateTime     @default(now())
+  read           Boolean      @default(false)
+
+  // Relations
+  user           User         @relation(fields: [userId], references: [id])
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  listing        Listing?     @relation(fields: [listingId], references: [id])
+
+  @@index([userId])
+  @@index([subscriptionId])
 }

@@ -14,7 +14,8 @@ export const quickStartKeyboard = new InlineKeyboard()
   .row()
   .text('🎯 Точный подбор (3 мин)', 'detailed_search')
   .row()
-  .text('👀 Посмотреть примеры', 'view_demo');
+  .text('🎮 Попробовать демо', 'demo')
+  .text('❓ Помощь', 'help');
 
 // Quick budget keyboard
 export const quickBudgetKeyboard = new InlineKeyboard()

@@ -1,208 +1,296 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { Listing, formatPrice } from '@real-estate-bot/shared';
 import Image from 'next/image';
-import useSWR from 'swr';
-import { formatPrice, formatArea } from '@real-estate-bot/shared';
-import { apiClient } from '@/lib/api';
-import { MatchScoreBadge } from '@/components/MatchScoreBadge';
-import { useTelegram } from '@/hooks/useTelegram';
+import { useInitData } from '@tma.js/sdk-react';
+import { MainLayout } from '@/components/layouts/MainLayout';
 
-export default function ListingPage() {
+export default function ListingDetailPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { showMainButton, hideMainButton, showBackButton, hideBackButton, openLink } = useTelegram();
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const initData = useInitData();
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showContactModal, setShowContactModal] = useState(false);
 
-  // Load listing data
-  const { data: listing, error } = useSWR(
-    id ? `/listings/${id}` : null,
-    () => apiClient.getListing(id as string)
-  );
-
-  // Setup navigation
   useEffect(() => {
-    showBackButton(() => router.back());
-    
-    return () => {
-      hideBackButton();
-      hideMainButton();
-    };
-  }, [showBackButton, hideBackButton, hideMainButton, router]);
-
-  // Setup main button for external link
-  useEffect(() => {
-    if (listing?.partnerDeeplinkTemplate) {
-      showMainButton('Смотреть на сайте', () => {
-        // Track click
-        apiClient.trackClick(listing.id);
-        // Open link
-        openLink(listing.partnerDeeplinkTemplate!);
-      });
+    if (id) {
+      fetchListing(id as string);
     }
-  }, [listing, showMainButton, openLink]);
+  }, [id]);
 
-  if (error) {
+  const fetchListing = async (listingId: string) => {
+    try {
+      const response = await fetch(`/api/listings/${listingId}`, {
+        headers: {
+          'X-Init-Data': initData?.raw || ''
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch listing');
+      
+      const data = await response.json();
+      setListing(data);
+    } catch (error) {
+      console.error('Error fetching listing:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShare = () => {
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.shareMessage(
+        `Посмотри этот объект: ${listing?.title}\n${formatPrice(listing?.price || 0)}`,
+        `https://t.me/${process.env.NEXT_PUBLIC_BOT_USERNAME}?start=listing_${listing?.id}`
+      );
+    }
+  };
+
+  const handleContact = () => {
+    setShowContactModal(true);
+    // Track lead generation
+    fetch('/api/leads/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Init-Data': initData?.raw || ''
+      },
+      body: JSON.stringify({ listingId: listing?.id })
+    });
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">Ошибка загрузки</p>
-          <button
-            onClick={() => router.back()}
-            className="text-telegram-link"
-          >
-            Вернуться назад
-          </button>
+      <MainLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   if (!listing) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-button"></div>
-      </div>
+      <MainLayout>
+        <div className="text-center py-8">
+          <p>Объект не найден</p>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-telegram-bg pb-20">
-      {/* Photo Gallery */}
-      <div className="relative h-64 bg-gray-200">
-        {listing.photos && listing.photos.length > 0 ? (
-          <>
-            <Image
-              src={listing.photos[currentPhotoIndex]}
-              alt={listing.title}
-              fill
-              className="object-cover"
-            />
-            
-            {/* Photo navigation */}
-            {listing.photos.length > 1 && (
-              <>
-                <button
-                  onClick={() => setCurrentPhotoIndex((prev) => (prev - 1 + listing.photos.length) % listing.photos.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full"
-                >
-                  ←
-                </button>
-                <button
-                  onClick={() => setCurrentPhotoIndex((prev) => (prev + 1) % listing.photos.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full"
-                >
-                  →
-                </button>
-                
-                {/* Photo indicators */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                  {listing.photos.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full ${
-                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
-                      }`}
-                    />
-                  ))}
+    <MainLayout>
+      <div className="max-w-4xl mx-auto">
+        {/* Image Gallery */}
+        <div className="relative h-64 md:h-96 bg-gray-200 dark:bg-gray-800">
+          {listing.images && listing.images.length > 0 ? (
+            <>
+              <Image
+                src={listing.images[currentImageIndex]}
+                alt={listing.title}
+                fill
+                className="object-cover"
+              />
+              {listing.images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setCurrentImageIndex(prev => 
+                      prev === 0 ? listing.images!.length - 1 : prev - 1
+                    )}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setCurrentImageIndex(prev => 
+                      prev === listing.images!.length - 1 ? 0 : prev + 1
+                    )}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-2 rounded-full"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                    {listing.images.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full ${
+                          index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          {/* Header */}
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              {listing.title}
+            </h1>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+              {formatPrice(listing.price)}
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
+            <h2 className="font-semibold mb-2">Расположение</h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-2">{listing.address}</p>
+            <div className="flex flex-wrap gap-2">
+              {listing.district && (
+                <span className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full text-sm">
+                  📍 {listing.district}
+                </span>
+              )}
+              {listing.metro && (
+                <span className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full text-sm">
+                  🚇 {listing.metro}
+                  {listing.metroDistance && ` (${listing.metroDistance.minutes} мин)`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Characteristics */}
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
+            <h2 className="font-semibold mb-2">Характеристики</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {listing.rooms > 0 && (
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Комнат</span>
+                  <p className="font-semibold">{listing.rooms}</p>
                 </div>
-              </>
-            )}
-          </>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <span className="text-gray-500">Нет фото</span>
+              )}
+              {listing.area && (
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Площадь</span>
+                  <p className="font-semibold">{listing.area} м²</p>
+                </div>
+              )}
+              {listing.floor && (
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Этаж</span>
+                  <p className="font-semibold">{listing.floor}/{listing.floors || '?'}</p>
+                </div>
+              )}
+              {listing.price && listing.area && (
+                <div>
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">Цена за м²</span>
+                  <p className="font-semibold">{formatPrice(Math.round(listing.price / listing.area))}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Features */}
+          {listing.features && listing.features.length > 0 && (
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
+              <h2 className="font-semibold mb-2">Особенности</h2>
+              <div className="flex flex-wrap gap-2">
+                {listing.features.map((feature, index) => (
+                  <span key={index} className="bg-white dark:bg-gray-700 px-3 py-1 rounded-full text-sm">
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          {listing.description && (
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
+              <h2 className="font-semibold mb-2">Описание</h2>
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {listing.description}
+              </p>
+            </div>
+          )}
+
+          {/* Match Explanation */}
+          {listing.matchExplanation && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <h2 className="font-semibold mb-2 text-blue-900 dark:text-blue-100">
+                Почему этот объект вам подходит
+              </h2>
+              <p className="text-blue-800 dark:text-blue-200">
+                {listing.matchExplanation}
+              </p>
+            </div>
+          )}
+
+          {/* Partner Info */}
+          {listing.partnerData && (
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Предложение от партнера
+                </span>
+                <span className="font-semibold">{listing.partnerData.partnerName}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 p-4">
+            <div className="max-w-4xl mx-auto flex gap-3">
+              <button
+                onClick={handleContact}
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition"
+              >
+                Связаться
+              </button>
+              <button
+                onClick={handleShare}
+                className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-3 px-6 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m9.032 4.026a9.001 9.001 0 010-7.684m-9.032 4.026A9.001 9.001 0 0112 3c2.485 0 4.735 1.007 6.368 2.632M8.684 10.658A9.001 9.001 0 0112 21c-2.485 0-4.735-1.007-6.368-2.632" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Modal */}
+        {showContactModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+              <h3 className="text-lg font-semibold mb-4">Спасибо за интерес!</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Мы передали вашу заявку партнеру. С вами свяжутся в ближайшее время.
+              </p>
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold"
+              >
+                Понятно
+              </button>
+            </div>
           </div>
         )}
+
+        {/* Spacer for fixed buttons */}
+        <div className="h-20"></div>
       </div>
-
-      {/* Content */}
-      <div className="p-4">
-        {/* Title and badges */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold mb-2">{listing.title}</h1>
-          
-          <div className="flex flex-wrap gap-2 mb-3">
-            {listing.isNewBuilding && (
-              <span className="bg-blue-500 text-white text-sm px-3 py-1 rounded">
-                Новостройка
-              </span>
-            )}
-            {listing.stage && (
-              <span className="bg-gray-500 text-white text-sm px-3 py-1 rounded">
-                {listing.stage}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Price */}
-        <div className="mb-6">
-          <div className="text-3xl font-bold text-telegram-link mb-1">
-            {formatPrice(listing.price)}
-          </div>
-          <div className="text-telegram-hint">
-            {formatPrice(Math.round(listing.price / listing.area))}/м²
-          </div>
-        </div>
-
-        {/* Main specs */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="text-center p-3 bg-telegram-secondary-bg rounded">
-            <div className="text-2xl mb-1">🏠</div>
-            <div className="font-semibold">{listing.rooms}</div>
-            <div className="text-sm text-telegram-hint">комнат</div>
-          </div>
-          <div className="text-center p-3 bg-telegram-secondary-bg rounded">
-            <div className="text-2xl mb-1">📐</div>
-            <div className="font-semibold">{listing.area}</div>
-            <div className="text-sm text-telegram-hint">м²</div>
-          </div>
-          <div className="text-center p-3 bg-telegram-secondary-bg rounded">
-            <div className="text-2xl mb-1">🏢</div>
-            <div className="font-semibold">{listing.floor}/{listing.totalFloors}</div>
-            <div className="text-sm text-telegram-hint">этаж</div>
-          </div>
-        </div>
-
-        {/* Address */}
-        <div className="mb-6">
-          <h2 className="font-semibold text-lg mb-2">Адрес</h2>
-          <p className="text-telegram-hint">📍 {listing.address}</p>
-        </div>
-
-        {/* Features */}
-        <div className="mb-6">
-          <h2 className="font-semibold text-lg mb-3">Особенности</h2>
-          <div className="space-y-2">
-            {listing.hasParking && (
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🚗</span>
-                <span>Есть парковка</span>
-              </div>
-            )}
-            {listing.year && (
-              <div className="flex items-center gap-2">
-                <span className="text-xl">📅</span>
-                <span>Год постройки: {listing.year}</span>
-              </div>
-            )}
-            {listing.developer && (
-              <div className="flex items-center gap-2">
-                <span className="text-xl">👷</span>
-                <span>Застройщик: {listing.developer}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Description */}
-        {listing.description && (
-          <div className="mb-6">
-            <h2 className="font-semibold text-lg mb-2">Описание</h2>
-            <p className="text-telegram-hint whitespace-pre-wrap">{listing.description}</p>
-          </div>
-        )}
-      </div>
-    </div>
+    </MainLayout>
   );
 }

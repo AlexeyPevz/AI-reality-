@@ -13,6 +13,9 @@ import { searchAndScoreListings } from './services/search.service';
 import { formatPrice, formatArea } from '@real-estate-bot/shared';
 import { getMarketInsights } from './services/market.service';
 import { analytics } from './services/analytics.service';
+import { startMonitoringJob } from './services/monitoring.service';
+import { subscriptionsCommand, handleSubscriptionCallback, handleNotificationToggle, createSubscriptionAfterSearch } from './commands/subscriptions';
+import { demoCommand, handleDemoSelection, handleDemoActions } from './commands/demo';
 
 // Create bot instance
 const bot = new Bot<BotContext>(config.botToken);
@@ -268,15 +271,37 @@ async function start() {
   // Set bot commands
   await bot.api.setMyCommands([
     { command: 'start', description: 'Начать работу с ботом' },
+    { command: 'demo', description: '🎮 Демо-режим' },
     { command: 'search', description: 'Новый поиск' },
     { command: 'queries', description: 'Мои запросы' },
+    { command: 'subscriptions', description: 'Подписки на уведомления' },
     { command: 'settings', description: 'Настройки' },
     { command: 'help', description: 'Помощь' },
   ]);
 
+  // Register /subscriptions command
+  bot.command('subscriptions', subscriptionsCommand);
+
+  // Handle subscription callbacks
+  bot.callbackQuery(/^sub_/, handleSubscriptionCallback);
+  bot.callbackQuery(/^enable_notifications_/, handleNotificationToggle);
+  
+  // Register /demo command
+  bot.command('demo', demoCommand);
+  
+  // Handle demo callbacks
+  bot.callbackQuery(/^demo_/, handleDemoSelection);
+  bot.callbackQuery(['start_real_search', 'demo_how_it_works'], handleDemoActions);
+
+  // Start background monitoring
+  startMonitoringJob(bot);
+
   // Start polling
   bot.start({
-    onStart: () => console.log('Bot started successfully'),
+    onStart: () => {
+      console.log('Bot started successfully');
+      console.log('Background monitoring is active');
+    },
   });
 }
 

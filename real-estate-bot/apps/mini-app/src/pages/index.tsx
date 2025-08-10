@@ -1,151 +1,213 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import useSWR from 'swr';
-import { MatchResult } from '@real-estate-bot/shared';
-import { apiClient } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { useInitData, useMainButton, useBackButton } from '@tma.js/sdk-react';
+import { Listing } from '@real-estate-bot/shared';
 import { ListingCard } from '@/components/ListingCard';
-import { useTelegram } from '@/hooks/useTelegram';
+import { MainLayout } from '@/components/layouts/MainLayout';
 
 export default function HomePage() {
-  const router = useRouter();
-  const { user, isReady } = useTelegram();
-  const [selectedPreferencesId, setSelectedPreferencesId] = useState<string | null>(null);
+  const initData = useInitData();
+  const mainButton = useMainButton();
+  const backButton = useBackButton();
+  
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<'all' | 'favorites'>('all');
+  const [sortBy, setSortBy] = useState<'score' | 'price' | 'date'>('score');
 
-  // Load user preferences
-  const { data: preferences, error: preferencesError } = useSWR(
-    isReady ? '/preferences' : null,
-    () => apiClient.getPreferences()
-  );
-
-  // Load search results
-  const { data: searchResults, error: searchError, mutate: refreshSearch } = useSWR(
-    selectedPreferencesId ? `/search/${selectedPreferencesId}` : null,
-    () => apiClient.search(selectedPreferencesId!)
-  );
-
-  // Auto-select first preferences
   useEffect(() => {
-    if (preferences && preferences.length > 0 && !selectedPreferencesId) {
-      setSelectedPreferencesId(preferences[0].id);
-    }
-  }, [preferences, selectedPreferencesId]);
+    fetchListings();
+    loadFavorites();
+    
+    // Setup main button
+    mainButton.setText('Новый поиск');
+    mainButton.show();
+    mainButton.onClick(() => {
+      // Return to bot to start new search
+      window.Telegram?.WebApp.close();
+    });
 
-  const handleListingClick = (result: MatchResult) => {
-    router.push(`/listing/${result.listingId}`);
+    // Hide back button on main page
+    backButton.hide();
+
+    return () => {
+      mainButton.hide();
+    };
+  }, [mainButton, backButton]);
+
+  const fetchListings = async () => {
+    try {
+      const response = await fetch('/api/listings', {
+        headers: {
+          'X-Init-Data': initData?.raw || ''
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch listings');
+      
+      const data = await response.json();
+      setListings(data.listings || []);
+    } catch (error) {
+      console.error('Error fetching listings:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-button mx-auto"></div>
-          <p className="mt-4 text-telegram-hint">Загрузка...</p>
-        </div>
-      </div>
-    );
-  }
+  const loadFavorites = () => {
+    const saved = localStorage.getItem('favorites');
+    if (saved) {
+      setFavorites(new Set(JSON.parse(saved)));
+    }
+  };
 
-  if (preferencesError || searchError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">Произошла ошибка</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="bg-telegram-button text-telegram-button-text px-4 py-2 rounded"
-          >
-            Перезагрузить
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const toggleFavorite = (listingId: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(listingId)) {
+      newFavorites.delete(listingId);
+    } else {
+      newFavorites.add(listingId);
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem('favorites', JSON.stringify(Array.from(newFavorites)));
+  };
 
-  if (!preferences || preferences.length === 0) {
+  const sortedListings = [...listings].sort((a, b) => {
+    switch (sortBy) {
+      case 'score':
+        return (b.matchScore || 0) - (a.matchScore || 0);
+      case 'price':
+        return a.price - b.price;
+      case 'date':
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      default:
+        return 0;
+    }
+  });
+
+  const filteredListings = filter === 'favorites' 
+    ? sortedListings.filter(l => favorites.has(l.id))
+    : sortedListings;
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Добро пожаловать!</h1>
-          <p className="text-telegram-hint mb-6">
-            Пройдите интервью в боте, чтобы мы могли подобрать для вас идеальную недвижимость
-          </p>
-          <button
-            onClick={() => window.Telegram?.WebApp?.close()}
-            className="bg-telegram-button text-telegram-button-text px-6 py-3 rounded-lg"
-          >
-            Вернуться в бот
-          </button>
+      <MainLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-telegram-bg">
-      {/* Header */}
-      <header className="bg-telegram-secondary-bg shadow-sm p-4">
-        <h1 className="text-xl font-bold mb-2">Подобранная недвижимость</h1>
-        
-        {/* Preferences selector */}
-        {preferences.length > 1 && (
-          <select
-            value={selectedPreferencesId || ''}
-            onChange={(e) => setSelectedPreferencesId(e.target.value)}
-            className="w-full p-2 rounded bg-telegram-bg text-telegram-text"
-          >
-            {preferences.map((pref) => (
-              <option key={pref.id} value={pref.id}>
-                {pref.mode === 'life' ? '🏠 Для жизни' : '💰 Инвестиции'} - {new Date(pref.createdAt).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        )}
-      </header>
+    <MainLayout>
+      <div className="max-w-4xl mx-auto p-4">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Подобранные объекты
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Найдено {listings.length} объектов по вашим критериям
+          </p>
+        </div>
 
-      {/* Content */}
-      <main className="p-4">
-        {!searchResults ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-telegram-button mx-auto"></div>
-            <p className="mt-4 text-telegram-hint">Ищем подходящие варианты...</p>
-          </div>
-        ) : searchResults.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-telegram-hint">По вашим критериям ничего не найдено</p>
+        {/* Filters and Sort */}
+        <div className="mb-6 space-y-3">
+          {/* Filter Tabs */}
+          <div className="flex gap-2">
             <button
-              onClick={() => refreshSearch()}
-              className="mt-4 text-telegram-link"
+              onClick={() => setFilter('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                filter === 'all' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
             >
-              Обновить поиск
+              Все ({listings.length})
+            </button>
+            <button
+              onClick={() => setFilter('favorites')}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                filter === 'favorites' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              Избранное ({favorites.size})
             </button>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-telegram-hint mb-4">
-              Найдено {searchResults.length} подходящих вариантов
-            </p>
-            
-            {searchResults.map((result, index) => {
-              // Generate social proof for high-scoring listings
-              const socialProof = result.matchScore >= 8 ? {
-                viewsToday: 20 + Math.floor(Math.random() * 80),
-                savedByUsers: 5 + Math.floor(Math.random() * 15),
-                lastViewed: index === 0 ? '15 мин назад' : `${1 + index} ч. назад`
-              } : undefined;
 
-              return (
-                <ListingCard
-                  key={result.listingId}
-                  listing={result.listing!}
-                  matchResult={result}
-                  socialProof={socialProof}
-                  onClick={() => handleListingClick(result)}
-                />
-              );
-            })}
+          {/* Sort Options */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Сортировка:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-lg text-sm"
+            >
+              <option value="score">По соответствию</option>
+              <option value="price">По цене</option>
+              <option value="date">По дате</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        {filteredListings.length === 0 && (
+          <div className="text-center py-12">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              {filter === 'favorites' 
+                ? 'Вы еще не добавили объекты в избранное' 
+                : 'Нет объектов по вашим критериям'}
+            </p>
+            <button
+              onClick={() => window.Telegram?.WebApp.close()}
+              className="text-blue-600 dark:text-blue-400 font-medium"
+            >
+              Изменить критерии поиска
+            </button>
           </div>
         )}
-      </main>
-    </div>
+
+        {/* Listings Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredListings.map((listing) => (
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              matchScore={listing.matchScore}
+              isFavorite={favorites.has(listing.id)}
+              onFavorite={toggleFavorite}
+            />
+          ))}
+        </div>
+
+        {/* Stats Footer */}
+        {listings.length > 0 && (
+          <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <h3 className="font-semibold mb-2">Статистика поиска</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Средний score:</span>
+                <p className="font-semibold">
+                  {(listings.reduce((sum, l) => sum + (l.matchScore || 0), 0) / listings.length).toFixed(1)}
+                </p>
+              </div>
+              <div>
+                <span className="text-gray-600 dark:text-gray-400">Диапазон цен:</span>
+                <p className="font-semibold">
+                  {Math.min(...listings.map(l => l.price / 1000000)).toFixed(1)} - 
+                  {Math.max(...listings.map(l => l.price / 1000000)).toFixed(1)} млн ₽
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </MainLayout>
   );
 }
