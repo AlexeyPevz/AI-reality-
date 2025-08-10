@@ -10,6 +10,7 @@ import {
   normalizeScore
 } from '@real-estate-bot/shared';
 import { ProviderFactory } from '@real-estate-bot/providers';
+import { llmService } from './llm.service';
 
 export async function searchAndScoreListings(preferences: Preferences): Promise<MatchResult[]> {
   // Build query from preferences
@@ -191,38 +192,49 @@ async function generateExplanation(
   breakdown: MatchBreakdown,
   preferences: Preferences
 ): Promise<string> {
-  // Simple rule-based explanation for MVP
-  // In production, would use LLM for natural language generation
-  
-  const highScoreFactors: string[] = [];
-  const lowScoreFactors: string[] = [];
+  try {
+    // Try to use LLM for natural explanation
+    const explanation = await llmService.explainMatch(
+      listing,
+      preferences,
+      breakdown,
+      calculateWeightedScore(preferences.weights as any, breakdown)
+    );
+    return explanation;
+  } catch (error) {
+    console.error('LLM explanation error, falling back to rule-based:', error);
+    
+    // Fallback to rule-based explanation
+    const highScoreFactors: string[] = [];
+    const lowScoreFactors: string[] = [];
 
-  for (const [factor, score] of Object.entries(breakdown)) {
-    if (score !== undefined && score !== null) {
-      if (score >= 8) {
-        highScoreFactors.push(getFactorDescription(factor, score, true));
-      } else if (score <= 4) {
-        lowScoreFactors.push(getFactorDescription(factor, score, false));
+    for (const [factor, score] of Object.entries(breakdown)) {
+      if (score !== undefined && score !== null) {
+        if (score >= 8) {
+          highScoreFactors.push(getFactorDescription(factor, score, true));
+        } else if (score <= 4) {
+          lowScoreFactors.push(getFactorDescription(factor, score, false));
+        }
       }
     }
+
+    let explanation = '';
+
+    if (highScoreFactors.length > 0) {
+      explanation += `✅ Преимущества: ${highScoreFactors.join(', ')}.`;
+    }
+
+    if (lowScoreFactors.length > 0) {
+      if (explanation) explanation += '\n\n';
+      explanation += `⚠️ Недостатки: ${lowScoreFactors.join(', ')}.`;
+    }
+
+    if (!explanation) {
+      explanation = 'Объект имеет средние показатели по всем критериям.';
+    }
+
+    return explanation;
   }
-
-  let explanation = '';
-
-  if (highScoreFactors.length > 0) {
-    explanation += `✅ Преимущества: ${highScoreFactors.join(', ')}.`;
-  }
-
-  if (lowScoreFactors.length > 0) {
-    if (explanation) explanation += '\n\n';
-    explanation += `⚠️ Недостатки: ${lowScoreFactors.join(', ')}.`;
-  }
-
-  if (!explanation) {
-    explanation = 'Объект имеет средние показатели по всем критериям.';
-  }
-
-  return explanation;
 }
 
 function getFactorDescription(factor: string, score: number, isPositive: boolean): string {

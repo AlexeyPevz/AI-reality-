@@ -22,6 +22,7 @@ export const config = {
   // LLM settings
   openaiApiKey: process.env.OPENAI_API_KEY,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+  llmProvider: process.env.LLM_PROVIDER || 'openai',
   llmModel: process.env.LLM_MODEL || 'gpt-4-turbo-preview',
   
   // Environment
