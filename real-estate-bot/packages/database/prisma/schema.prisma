@@ -134,13 +134,22 @@ model Feedback {
 
 model KnowledgeDocument {
   id         String                      @id @default(uuid())
+  type       String                      // pdf, url, text, faq, guide
   title      String
-  sourceUrl  String?
-  meta       Json
   content    String                      @db.Text
+  sourceUrl  String?
+  metadata   Json                        @default("{}")
   embedding  Unsupported("vector(1536)")?
+  chunkIndex Int?
+  parentId   String?
   createdAt  DateTime                    @default(now())
   updatedAt  DateTime                    @updatedAt
 
+  // Relations
+  parent     KnowledgeDocument?          @relation("DocumentChunks", fields: [parentId], references: [id])
+  chunks     KnowledgeDocument[]         @relation("DocumentChunks")
+
   @@index([title])
+  @@index([type])
+  @@index([parentId])
 }

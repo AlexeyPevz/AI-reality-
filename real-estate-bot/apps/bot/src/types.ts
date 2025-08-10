@@ -38,6 +38,9 @@ export interface SessionData {
     recommendationId: string;
     action: 'like' | 'dislike' | 'hide';
   };
+  
+  // Input waiting state
+  waitingFor?: 'faq_input' | 'url_input' | 'kb_query' | 'feedback' | 'question';
 }
 
 // Bot context type

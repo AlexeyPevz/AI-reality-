@@ -58,7 +58,7 @@ export class LLMService {
     return MODEL_PRESETS[this.modelPreset][role];
   }
 
-  async generateResponse(context: ConversationContext): Promise<AgentResponse> {
+  async generateResponse(context: ConversationContext, useRAG: boolean = true): Promise<AgentResponse> {
     const prompt = PROMPTS[context.role];
     if (!prompt) {
       throw new Error(`No prompt template for role: ${context.role}`);
@@ -68,11 +68,35 @@ export class LLMService {
     const model = this.getModelForRole(context.role);
     const modelInfo = MODELS[model];
 
+    // Check if we should enhance with RAG
+    let ragContext = '';
+    if (useRAG && ['consultant', 'explainer'].includes(context.role)) {
+      const userQuery = context.history[context.history.length - 1]?.content || '';
+      
+      try {
+        const { ragService } = await import('./rag.service');
+        const ragResponse = await ragService.query({
+          query: userQuery,
+          topK: 3,
+          context: JSON.stringify(context.preferences || {})
+        });
+        
+        if (ragResponse.chunks.length > 0) {
+          ragContext = '\n\nИнформация из базы знаний:\n' +
+            ragResponse.chunks.map((chunk, i) => 
+              `[${i + 1}] ${chunk.content}`
+            ).join('\n\n');
+        }
+      } catch (error) {
+        console.error('RAG enhancement error:', error);
+      }
+    }
+
     // Build messages array
     const messages: Message[] = [
       {
         role: 'system',
-        content: prompt.systemPrompt
+        content: prompt.systemPrompt + ragContext
       },
       ...context.history,
     ];

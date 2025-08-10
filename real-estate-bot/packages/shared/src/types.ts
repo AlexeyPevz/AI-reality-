@@ -179,13 +179,63 @@ export interface Click {
 // Knowledge document types (for RAG)
 export interface KnowledgeDocument {
   id: string;
+  type: 'pdf' | 'url' | 'text' | 'faq' | 'guide';
   title: string;
-  sourceUrl?: string;
-  meta: Record<string, any>;
   content: string;
-  embedding?: number[];
+  sourceUrl?: string;
+  metadata: {
+    source?: string;
+    category?: string;
+    tags?: string[];
+    author?: string;
+    pageNumber?: number;
+    url?: string;
+    [key: string]: any;
+  };
+  embedding?: number[]; // Vector embedding
+  chunkIndex?: number; // Position in original document
+  parentId?: string; // Reference to parent document
   createdAt: Date;
   updatedAt: Date;
+}
+
+// Document chunk for retrieval
+export interface DocumentChunk {
+  id: string;
+  documentId: string;
+  content: string;
+  embedding: number[];
+  metadata: {
+    startIndex: number;
+    endIndex: number;
+    pageNumber?: number;
+    section?: string;
+  };
+  similarity?: number; // Similarity score when retrieved
+}
+
+// RAG Query types
+export interface RAGQuery {
+  query: string;
+  context?: string;
+  topK?: number;
+  threshold?: number;
+  filters?: {
+    type?: KnowledgeDocument['type'][];
+    category?: string[];
+    tags?: string[];
+  };
+}
+
+// RAG Response
+export interface RAGResponse {
+  chunks: DocumentChunk[];
+  answer?: string;
+  sources: Array<{
+    title: string;
+    url?: string;
+    pageNumber?: number;
+  }>;
 }
 
 // Provider types
