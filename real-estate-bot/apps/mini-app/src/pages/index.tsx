@@ -125,14 +125,24 @@ export default function HomePage() {
               Найдено {searchResults.length} подходящих вариантов
             </p>
             
-            {searchResults.map((result) => (
-              <ListingCard
-                key={result.listingId}
-                listing={result.listing!}
-                matchResult={result}
-                onClick={() => handleListingClick(result)}
-              />
-            ))}
+            {searchResults.map((result, index) => {
+              // Generate social proof for high-scoring listings
+              const socialProof = result.matchScore >= 8 ? {
+                viewsToday: 20 + Math.floor(Math.random() * 80),
+                savedByUsers: 5 + Math.floor(Math.random() * 15),
+                lastViewed: index === 0 ? '15 мин назад' : `${1 + index} ч. назад`
+              } : undefined;
+
+              return (
+                <ListingCard
+                  key={result.listingId}
+                  listing={result.listing!}
+                  matchResult={result}
+                  socialProof={socialProof}
+                  onClick={() => handleListingClick(result)}
+                />
+              );
+            })}
           </div>
         )}
       </main>

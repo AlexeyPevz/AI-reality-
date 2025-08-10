@@ -6,9 +6,14 @@ interface ListingCardProps {
   listing: Listing;
   matchResult?: MatchResult;
   onClick?: () => void;
+  socialProof?: {
+    viewsToday?: number;
+    savedByUsers?: number;
+    lastViewed?: string;
+  };
 }
 
-export function ListingCard({ listing, matchResult, onClick }: ListingCardProps) {
+export function ListingCard({ listing, matchResult, onClick, socialProof }: ListingCardProps) {
   return (
     <div 
       className="bg-telegram-secondary-bg rounded-lg overflow-hidden shadow-md cursor-pointer transition-transform hover:scale-[1.02]"
@@ -84,6 +89,21 @@ export function ListingCard({ listing, matchResult, onClick }: ListingCardProps)
             </span>
           )}
         </div>
+
+        {/* Social proof */}
+        {socialProof && (socialProof.viewsToday || socialProof.savedByUsers) && (
+          <div className="mt-3 flex items-center gap-3 text-xs text-telegram-hint">
+            {socialProof.viewsToday && (
+              <span>👀 {socialProof.viewsToday} просмотров сегодня</span>
+            )}
+            {socialProof.savedByUsers && (
+              <span>⭐ {socialProof.savedByUsers} сохранили</span>
+            )}
+            {socialProof.lastViewed && (
+              <span>• {socialProof.lastViewed}</span>
+            )}
+          </div>
+        )}
 
         {/* Match explanation */}
         {matchResult && matchResult.explanation && (

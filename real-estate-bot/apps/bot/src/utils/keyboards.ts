@@ -8,6 +8,48 @@ export const mainMenuKeyboard = new InlineKeyboard()
   .text('📋 Мои запросы', 'my_queries')
   .text('⚙️ Настройки', 'settings');
 
+// Quick start keyboard
+export const quickStartKeyboard = new InlineKeyboard()
+  .text('⚡ Быстрый поиск (30 сек)', 'quick_search')
+  .row()
+  .text('🎯 Точный подбор (3 мин)', 'detailed_search')
+  .row()
+  .text('👀 Посмотреть примеры', 'view_demo');
+
+// Quick budget keyboard
+export const quickBudgetKeyboard = new InlineKeyboard()
+  .text('до 5 млн', 'qbudget_5')
+  .text('5-8 млн', 'qbudget_5_8')
+  .row()
+  .text('8-12 млн', 'qbudget_8_12')
+  .text('12-20 млн', 'qbudget_12_20')
+  .row()
+  .text('20+ млн', 'qbudget_20_plus')
+  .text('💬 Ввести свой', 'qbudget_custom');
+
+// Popular districts keyboard for Moscow
+export const popularDistrictsKeyboard = new InlineKeyboard()
+  .text('🏙 Центр', 'district_center')
+  .text('🌳 Запад', 'district_west')
+  .text('📚 Юго-Запад', 'district_southwest')
+  .row()
+  .text('🏢 Москва-Сити', 'district_city')
+  .text('🌲 Север', 'district_north')
+  .text('💼 Восток', 'district_east')
+  .row()
+  .text('✅ Готово', 'districts_done');
+
+// Quick priorities keyboard
+export const quickPrioritiesKeyboard = new InlineKeyboard()
+  .text('🚇 Близко к метро', 'priority_metro')
+  .text('🏫 Рядом школа', 'priority_schools')
+  .row()
+  .text('🌳 Зеленый район', 'priority_parks')
+  .text('💰 Главное цена', 'priority_price')
+  .row()
+  .text('🚗 Нужна парковка', 'priority_parking')
+  .text('🏗 Новостройка', 'priority_new');
+
 // Mode selection keyboard
 export const modeSelectionKeyboard = new InlineKeyboard()
   .text('🏠 Для жизни', 'mode_life')
