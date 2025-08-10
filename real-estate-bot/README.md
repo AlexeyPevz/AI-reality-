@@ -162,6 +162,38 @@ npm run start
 
 ## Разработка
 
+### LLM Integration via OpenRouter
+
+Бот использует OpenRouter для доступа к множеству LLM моделей:
+
+1. Получите API ключ на [OpenRouter](https://openrouter.ai/)
+
+2. Настройте в `.env`:
+```bash
+OPENROUTER_API_KEY=sk-or-v1-your_key
+LLM_PRESET=balanced  # Опции: premium, balanced, economy, russian
+```
+
+3. Доступные модели:
+- **OpenAI**: GPT-4, GPT-3.5-turbo
+- **Anthropic**: Claude 3 (Opus, Sonnet, Haiku)
+- **Google**: Gemini Pro, PaLM
+- **Meta**: Llama 3
+- **Mistral**: Mixtral, Mistral
+- И многие другие!
+
+4. Тестирование моделей:
+```bash
+# В чате бота
+/experiment
+```
+
+5. Пресеты оптимизированы для разных сценариев:
+- **Premium**: Лучшее качество, высокая цена
+- **Balanced**: Баланс качества и цены
+- **Economy**: Минимальная стоимость
+- **Russian**: Оптимизирован для русского языка
+
 ### Добавление нового провайдера
 
 1. Создайте класс в `packages/providers/src/`

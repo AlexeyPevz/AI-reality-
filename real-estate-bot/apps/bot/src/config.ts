@@ -20,10 +20,9 @@ export const config = {
   apiUrl: process.env.API_URL || 'http://localhost:3001',
   
   // LLM settings
-  openaiApiKey: process.env.OPENAI_API_KEY,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY,
-  llmProvider: process.env.LLM_PROVIDER || 'openai',
-  llmModel: process.env.LLM_MODEL || 'gpt-4-turbo-preview',
+  openRouterApiKey: process.env.OPENROUTER_API_KEY,
+  llmPreset: process.env.LLM_PRESET || 'balanced', // premium, balanced, economy, russian
+  appUrl: process.env.APP_URL || 'https://real-estate-bot.com',
   
   // Environment
   nodeEnv: process.env.NODE_ENV || 'development',

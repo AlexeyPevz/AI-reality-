@@ -1,38 +1,61 @@
-import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
+import axios from 'axios';
 import { 
   LLMProvider, 
   LLMModel, 
   AgentRole, 
   Message, 
   AgentResponse,
-  ConversationContext 
+  ConversationContext,
+  ModelInfo
 } from '@real-estate-bot/shared';
 import { PROMPTS } from '../prompts';
 import { config } from '../config';
+import { MODELS, MODEL_PRESETS, selectOptimalModel } from '../config/models';
+
+interface OpenRouterResponse {
+  id: string;
+  model: string;
+  choices: Array<{
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
 
 export class LLMService {
-  private openai?: OpenAI;
-  private anthropic?: Anthropic;
-  private provider: LLMProvider;
-  private model: LLMModel;
+  private apiKey: string;
+  private baseURL = 'https://openrouter.ai/api/v1';
+  private modelPreset: keyof typeof MODEL_PRESETS;
+  private customModels?: Partial<Record<AgentRole, LLMModel>>;
 
-  constructor(provider: LLMProvider = 'openai', model?: LLMModel) {
-    this.provider = provider;
+  constructor(
+    modelPreset: keyof typeof MODEL_PRESETS = 'balanced',
+    customModels?: Partial<Record<AgentRole, LLMModel>>
+  ) {
+    this.apiKey = config.openRouterApiKey || '';
+    this.modelPreset = modelPreset;
+    this.customModels = customModels;
     
-    // Initialize providers based on config
-    if (provider === 'openai' && config.openaiApiKey) {
-      this.openai = new OpenAI({ apiKey: config.openaiApiKey });
-      this.model = model || 'gpt-4-turbo-preview';
-    } else if (provider === 'anthropic' && config.anthropicApiKey) {
-      this.anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
-      this.model = model || 'claude-3-sonnet';
-    } else {
-      // Fallback to mock provider for development
-      this.provider = 'openai';
-      this.model = 'gpt-3.5-turbo';
-      console.warn('LLM API keys not configured, using mock responses');
+    if (!this.apiKey) {
+      console.warn('OpenRouter API key not configured, using mock responses');
     }
+  }
+
+  private getModelForRole(role: AgentRole): LLMModel {
+    // Check custom models first
+    if (this.customModels?.[role]) {
+      return this.customModels[role];
+    }
+    
+    // Use preset
+    return MODEL_PRESETS[this.modelPreset][role];
   }
 
   async generateResponse(context: ConversationContext): Promise<AgentResponse> {
@@ -40,6 +63,10 @@ export class LLMService {
     if (!prompt) {
       throw new Error(`No prompt template for role: ${context.role}`);
     }
+
+    // Select optimal model for this role
+    const model = this.getModelForRole(context.role);
+    const modelInfo = MODELS[model];
 
     // Build messages array
     const messages: Message[] = [
@@ -67,10 +94,8 @@ export class LLMService {
     try {
       let response: string;
       
-      if (this.provider === 'openai' && this.openai) {
-        response = await this.generateOpenAI(messages);
-      } else if (this.provider === 'anthropic' && this.anthropic) {
-        response = await this.generateAnthropic(messages);
+      if (this.apiKey) {
+        response = await this.callOpenRouter(messages, model, modelInfo);
       } else {
         response = await this.generateMock(context);
       }
@@ -96,40 +121,72 @@ export class LLMService {
     }
   }
 
-  private async generateOpenAI(messages: Message[]): Promise<string> {
-    if (!this.openai) throw new Error('OpenAI not initialized');
+  private async callOpenRouter(
+    messages: Message[], 
+    model: LLMModel,
+    modelInfo: ModelInfo
+  ): Promise<string> {
+    try {
+      const response = await axios.post<OpenRouterResponse>(
+        `${this.baseURL}/chat/completions`,
+        {
+          model,
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          temperature: 0.7,
+          max_tokens: Math.min(1000, modelInfo.outputTokens),
+          // OpenRouter specific headers
+          transforms: ["middle-out"], // Better handling of context
+          route: "fallback" // Automatic fallback if model unavailable
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'HTTP-Referer': config.appUrl || 'https://real-estate-bot.com',
+            'X-Title': 'Real Estate Bot',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-    const completion = await this.openai.chat.completions.create({
-      model: this.model as string,
-      messages: messages.map(m => ({
-        role: m.role as 'system' | 'user' | 'assistant',
-        content: m.content
-      })),
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+      const content = response.data.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('Empty response from OpenRouter');
+      }
 
-    return completion.choices[0]?.message?.content || '';
+      // Log usage for cost tracking
+      if (response.data.usage && config.isDevelopment) {
+        const cost = this.calculateCost(
+          response.data.usage.prompt_tokens,
+          response.data.usage.completion_tokens,
+          modelInfo
+        );
+        console.log(`[LLM] Model: ${model}, Tokens: ${response.data.usage.total_tokens}, Cost: $${cost.toFixed(4)}`);
+      }
+
+      return content;
+    } catch (error: any) {
+      if (error.response?.status === 429) {
+        console.error('OpenRouter rate limit exceeded');
+        throw new Error('Rate limit exceeded, please try again later');
+      }
+      
+      if (error.response?.data?.error) {
+        console.error('OpenRouter API error:', error.response.data.error);
+        throw new Error(error.response.data.error.message || 'OpenRouter API error');
+      }
+      
+      throw error;
+    }
   }
 
-  private async generateAnthropic(messages: Message[]): Promise<string> {
-    if (!this.anthropic) throw new Error('Anthropic not initialized');
-
-    // Anthropic requires system message separately
-    const systemMessage = messages.find(m => m.role === 'system')?.content || '';
-    const otherMessages = messages.filter(m => m.role !== 'system');
-
-    const completion = await this.anthropic.messages.create({
-      model: this.model as string,
-      system: systemMessage,
-      messages: otherMessages.map(m => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content
-      })),
-      max_tokens: 1000,
-    });
-
-    return completion.content[0].type === 'text' ? completion.content[0].text : '';
+  private calculateCost(inputTokens: number, outputTokens: number, modelInfo: ModelInfo): number {
+    const inputCost = (inputTokens / 1_000_000) * modelInfo.inputCost;
+    const outputCost = (outputTokens / 1_000_000) * modelInfo.outputCost;
+    return inputCost + outputCost;
   }
 
   private async generateMock(context: ConversationContext): Promise<string> {
@@ -253,8 +310,38 @@ const DEFAULT_WEIGHTS = {
   }
 };
 
-// Singleton instance
+// Create different service instances for different purposes
 export const llmService = new LLMService(
-  (config.llmProvider as LLMProvider) || 'openai',
-  (config.llmModel as LLMModel) || undefined
+  (config.llmPreset as keyof typeof MODEL_PRESETS) || 'balanced'
 );
+
+// Specialized instances with custom models
+export const premiumLLM = new LLMService('premium');
+export const economyLLM = new LLMService('economy');
+export const russianLLM = new LLMService('russian');
+
+// Usage tracking
+export class LLMUsageTracker {
+  private static usage: Record<string, { count: number; cost: number }> = {};
+
+  static track(model: string, cost: number) {
+    if (!this.usage[model]) {
+      this.usage[model] = { count: 0, cost: 0 };
+    }
+    this.usage[model].count++;
+    this.usage[model].cost += cost;
+  }
+
+  static getReport() {
+    const total = Object.values(this.usage).reduce(
+      (acc, curr) => ({ count: acc.count + curr.count, cost: acc.cost + curr.cost }),
+      { count: 0, cost: 0 }
+    );
+
+    return {
+      byModel: this.usage,
+      total,
+      averageCostPerCall: total.count > 0 ? total.cost / total.count : 0
+    };
+  }
+}
