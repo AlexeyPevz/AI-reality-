@@ -1,5 +1,6 @@
 import { Lead, LeadBuyer, LeadQuality } from '@real-estate-bot/shared';
 import { leadService } from './lead.service';
+import { ProviderFactory } from '@real-estate-bot/providers';
 import axios from 'axios';
 
 // Примеры покупателей лидов (в реальности - из БД)
@@ -68,6 +69,60 @@ const LEAD_BUYERS: LeadBuyer[] = [
 
 export class LeadDistributionService {
   private buyers: LeadBuyer[] = LEAD_BUYERS;
+  
+  // Дополнительно распределяем лиды через All-in-One провайдеры
+  async distributeToAllInOneProviders(lead: Lead): Promise<{
+    distributed: boolean;
+    results: Array<{
+      provider: string;
+      success: boolean;
+      price?: number;
+      message?: string;
+    }>;
+    totalRevenue: number;
+  }> {
+    const results: Array<{
+      provider: string;
+      success: boolean;
+      price?: number;
+      message?: string;
+    }> = [];
+    
+    let totalRevenue = 0;
+    
+    // Получаем все All-in-One провайдеры
+    const providers = ProviderFactory.getAllInOneProviders();
+    
+    for (const provider of providers) {
+      try {
+        const response = await provider.submitLead(lead);
+        
+        results.push({
+          provider: provider.name,
+          success: response.success,
+          price: response.price,
+          message: response.message
+        });
+        
+        if (response.success && response.price) {
+          totalRevenue += response.price;
+        }
+      } catch (error) {
+        console.error(`Failed to submit lead to ${provider.name}:`, error);
+        results.push({
+          provider: provider.name,
+          success: false,
+          message: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+    
+    return {
+      distributed: results.some(r => r.success),
+      results,
+      totalRevenue
+    };
+  }
 
   // Автоматическое распределение нового лида
   async distributeLead(lead: Lead): Promise<{

@@ -2,12 +2,18 @@ import { ListingsProvider } from '@real-estate-bot/shared';
 import { MockListingsProvider } from './mock';
 import { PIKProvider } from './pik-provider';
 import { DomClickProvider } from './domclick-provider';
+import { YandexRealtyProvider } from './yandex-realty-provider';
+import { CianPartnerProvider } from './cian-partner-provider';
+import { AllInOneProvider } from './all-in-one-base';
 
 export * from './base';
 export * from './partner-base';
+export * from './all-in-one-base';
 export * from './mock';
 export * from './pik-provider';
 export * from './domclick-provider';
+export * from './yandex-realty-provider';
+export * from './cian-partner-provider';
 
 // Provider factory
 export class ProviderFactory {
@@ -31,6 +37,35 @@ export class ProviderFactory {
         partnerId: process.env.DOMCLICK_PARTNER_ID,
         apiKey: process.env.DOMCLICK_API_KEY,
         secretKey: process.env.DOMCLICK_SECRET_KEY
+      }));
+    }
+    
+    // Register All-in-One providers (база объектов + лиды)
+    if (process.env.YANDEX_REALTY_PARTNER_ID && process.env.YANDEX_REALTY_API_KEY) {
+      this.register(new YandexRealtyProvider({
+        partnerId: process.env.YANDEX_REALTY_PARTNER_ID,
+        apiKey: process.env.YANDEX_REALTY_API_KEY,
+        secretKey: process.env.YANDEX_REALTY_SECRET_KEY || '',
+        leadWebhookUrl: process.env.YANDEX_REALTY_LEAD_WEBHOOK || 'https://realty-partners.yandex.ru/api/v1/leads',
+        leadPricing: {
+          base: Number(process.env.YANDEX_LEAD_PRICE_BASE) || 1500,
+          qualified: Number(process.env.YANDEX_LEAD_PRICE_QUALIFIED) || 3000,
+          exclusive: Number(process.env.YANDEX_LEAD_PRICE_EXCLUSIVE) || 5000
+        }
+      }));
+    }
+    
+    if (process.env.CIAN_PARTNER_ID && process.env.CIAN_PARTNER_API_KEY) {
+      this.register(new CianPartnerProvider({
+        partnerId: process.env.CIAN_PARTNER_ID,
+        apiKey: process.env.CIAN_PARTNER_API_KEY,
+        secretKey: process.env.CIAN_PARTNER_SECRET_KEY || '',
+        leadWebhookUrl: process.env.CIAN_LEAD_WEBHOOK || 'https://partners.cian.ru/api/v2/leads/submit',
+        leadPricing: {
+          base: Number(process.env.CIAN_LEAD_PRICE_BASE) || 2000,
+          qualified: Number(process.env.CIAN_LEAD_PRICE_QUALIFIED) || 4000,
+          exclusive: Number(process.env.CIAN_LEAD_PRICE_EXCLUSIVE) || 7000
+        }
       }));
     }
   }
@@ -57,5 +92,11 @@ export class ProviderFactory {
     return this.getAll().filter(p => 
       p.name !== 'mock' && 'trackClick' in p
     );
+  }
+  
+  static getAllInOneProviders(): AllInOneProvider[] {
+    return this.getAll().filter(p => 
+      p instanceof AllInOneProvider
+    ) as AllInOneProvider[];
   }
 }
