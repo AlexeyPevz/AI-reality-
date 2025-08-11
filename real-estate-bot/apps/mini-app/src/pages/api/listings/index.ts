@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get user from database
     const user = await prisma.user.findUnique({
-      where: { tgId: userData.user.id.toString() },
+      where: { tgId: BigInt(userData.user.id) },
       include: {
         recommendations: {
           orderBy: { createdAt: 'desc' },

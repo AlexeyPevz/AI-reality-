@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (savedListing) {
       // Get user's recommendation for this listing
       const user = await prisma.user.findUnique({
-        where: { tgId: userData.user.id.toString() }
+        where: { tgId: BigInt(userData.user.id) }
       });
 
       if (user) {
@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Track view
     const user = await prisma.user.findUnique({
-      where: { tgId: userData.user.id.toString() }
+      where: { tgId: BigInt(userData.user.id) }
     });
 
     if (user && listing.partnerLink) {

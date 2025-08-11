@@ -77,7 +77,7 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       data: {
         userId: preferences.userId,
         listingId: listing.id,
-        matchScore,
+        score: matchScore,
         breakdown,
         explanation,
       },
@@ -95,8 +95,7 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
   const cached: Listing[] = [];
 
   for (const listing of listings) {
-    // Upsert listing cache
-    const cachedListing = await prisma.listingCache.upsert({
+    const dbListing = await prisma.listing.upsert({
       where: {
         provider_externalId: {
           provider,
@@ -106,19 +105,44 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
       create: {
         provider,
         externalId: listing.id,
-        raw: listing as any,
-        normalized: listing as any,
+        title: listing.title,
+        price: listing.price,
+        address: listing.address,
+        district: undefined,
+        metro: undefined,
+        metroDistance: undefined,
+        rooms: listing.rooms,
+        area: listing.area,
+        floor: listing.floor || 0,
+        floors: listing.totalFloors || 0,
+        description: listing.description || '',
+        images: listing.photos || [],
+        url: listing.partnerDeeplinkTemplate || '',
+        source: provider,
+        coordinates: { lat: listing.lat, lng: listing.lng } as any,
+        features: [],
+        partnerData: undefined,
+        publishedAt: new Date(),
       },
       update: {
-        raw: listing as any,
-        normalized: listing as any,
+        title: listing.title,
+        price: listing.price,
+        address: listing.address,
+        rooms: listing.rooms,
+        area: listing.area,
+        floor: listing.floor || 0,
+        floors: listing.totalFloors || 0,
+        description: listing.description || '',
+        images: listing.photos || [],
+        url: listing.partnerDeeplinkTemplate || '',
+        coordinates: { lat: listing.lat, lng: listing.lng } as any,
         updatedAt: new Date(),
       },
     });
 
     cached.push({
       ...listing,
-      id: cachedListing.id,
+      id: dbListing.id,
     });
   }
 
