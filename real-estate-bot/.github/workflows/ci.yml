@@ -32,4 +32,6 @@ jobs:
         run: npx turbo run build
 
       - name: Test
+        env:
+          CI: true
         run: npx turbo run test --continue
