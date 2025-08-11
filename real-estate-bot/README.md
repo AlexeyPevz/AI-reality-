@@ -221,3 +221,15 @@ LLM_PRESET=balanced  # Опции: premium, balanced, economy, russian
 ## Лицензия
 
 MIT
+
+## Обогащение факторов (реальные данные)
+
+- Используются источники:
+  - Yandex Maps Search API (при наличии `YANDEX_MAPS_API_KEY`)
+  - 2GIS Catalog API (при наличии `DGIS_API_KEY`)
+  - Overpass (OSM) как фоллбэк (`OVERPASS_API_URL`)
+- Факторы: школы, парки, метро (действительные расстояния), производные: шум/экология.
+- Кэшируется в БД моделью `ListingEnrichment` на `ENRICHMENT_CACHE_DAYS`.
+
+Переменные окружения:
+- `YANDEX_MAPS_API_KEY`, `DGIS_API_KEY`, `OVERPASS_API_URL`, `ENRICHMENT_CACHE_DAYS`

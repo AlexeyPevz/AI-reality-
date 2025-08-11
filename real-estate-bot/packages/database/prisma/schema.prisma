@@ -164,6 +164,7 @@ model Listing {
   recommendations Recommendation[]
   clicks          Click[]
   notifications   Notification[]
+  enrichment      ListingEnrichment?
 
   @@unique([provider, externalId])
   @@index([provider])
@@ -233,4 +234,14 @@ model ListingCache {
   updatedAt  DateTime @updatedAt
 
   @@unique([provider, externalId])
+}
+
+model ListingEnrichment {
+  id         String   @id @default(uuid())
+  listingId  String   @unique
+  data       Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 }

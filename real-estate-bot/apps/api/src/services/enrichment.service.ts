@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { prisma } from '@real-estate-bot/database';
 import { Listing, MatchBreakdown } from '@real-estate-bot/shared';
 
 interface EnrichmentResult {
@@ -21,6 +22,12 @@ export const enrichmentService = {
       const { lat, lng } = listing;
       const radius = 1200; // meters
 
+      // Try cache first
+      const cached = await prisma.listingEnrichment.findUnique({ where: { listingId: listing.id } });
+      if (cached && Date.now() - new Date(cached.updatedAt).getTime() < cacheDays * 24 * 60 * 60 * 1000) {
+        return cached.data as any;
+      }
+
       // Overpass QL to fetch schools, parks, metro around listing
       const query = `
         [out:json][timeout:25];
@@ -33,39 +40,71 @@ export const enrichmentService = {
         );
         out center;`;
 
-      const resp = await axios.post(overpassApi, query, {
-        headers: { 'Content-Type': 'text/plain' },
-        timeout: 15000,
-      });
+      // Prefer commercial providers if configured
+      const { fetchNearbyYandex } = await import('./nearby.providers');
+      const { fetchNearbyDGIS } = await import('./nearby.providers');
 
-      const elements: any[] = resp.data?.elements || [];
-      const schools = elements.filter(e => e.tags?.amenity === 'school');
-      const parks = elements.filter(e => e.tags?.leisure === 'park');
-      const metro = elements.filter(e =>
-        (e.tags?.railway === 'station' && e.tags?.station === 'subway') ||
-        (e.tags?.public_transport === 'station' && e.tags?.subway === 'yes')
-      );
+      const yandex = await fetchNearbyYandex(lat, lng, radius);
+      const dgis = !yandex ? await fetchNearbyDGIS(lat, lng, radius) : null;
 
-      // Simple scoring: more schools/parks better; metro distance mapped to score
-      const schoolsNearby = Math.max(0, Math.min(10, schools.length >= 5 ? 10 : schools.length * 2));
-      const parksNearby = Math.max(0, Math.min(10, parks.length >= 3 ? 10 : parks.length * 3.5));
+      let schoolsCount = 0, parksCount = 0; let metroDistances: number[] = [];
 
-      let metroDistanceMin: number | undefined = undefined;
-      if (metro.length > 0) {
-        const distances = metro.map((m) => distanceMeters(lat, lng, m.lat || m.center?.lat, m.lon || m.center?.lon));
-        metroDistanceMin = Math.min(...distances);
+      if (yandex) {
+        schoolsCount = yandex.schoolsCount;
+        parksCount = yandex.parksCount;
+        metroDistances = yandex.metroStations.map(s => s.distance);
+      } else if (dgis) {
+        schoolsCount = dgis.schoolsCount;
+        parksCount = dgis.parksCount;
+        metroDistances = dgis.metroStations.map(s => s.distance);
       }
 
-      return {
+      // Fallback to Overpass if needed
+      if (!yandex && !dgis) {
+        const resp = await axios.post(overpassApi, query, {
+          headers: { 'Content-Type': 'text/plain' },
+          timeout: 15000,
+        });
+        const elements: any[] = resp.data?.elements || [];
+        const schools = elements.filter(e => e.tags?.amenity === 'school');
+        const parks = elements.filter(e => e.tags?.leisure === 'park');
+        const metro = elements.filter(e =>
+          (e.tags?.railway === 'station' && e.tags?.station === 'subway') ||
+          (e.tags?.public_transport === 'station' && e.tags?.subway === 'yes')
+        );
+        schoolsCount = schools.length;
+        parksCount = parks.length;
+        metroDistances = metro.map((m: any) => distanceMeters(lat, lng, m.lat || m.center?.lat, m.lon || m.center?.lon));
+      }
+
+      // Scoring from counts/distances
+      const schoolsNearby = Math.max(0, Math.min(10, schoolsCount >= 5 ? 10 : schoolsCount * 2));
+      const parksNearby = Math.max(0, Math.min(10, parksCount >= 3 ? 10 : parksCount * 3.5));
+
+      let metroDistanceMin: number | undefined = undefined;
+      if (metroDistances.length > 0) {
+        metroDistanceMin = Math.min(...metroDistances);
+      }
+
+      const result: EnrichmentResult = {
         schoolsNearby,
         parksNearby,
         metroDistanceMin,
         metrics: {
-          schoolsCount: schools.length,
-          parksCount: parks.length,
-          metroStations: metro.length,
+          schoolsCount,
+          parksCount,
+          metroStations: metroDistances.length,
         }
       };
+
+      // Save to cache
+      await prisma.listingEnrichment.upsert({
+        where: { listingId: listing.id },
+        create: { listingId: listing.id, data: result as any },
+        update: { data: result as any, updatedAt: new Date() },
+      });
+
+      return result;
     } catch (e) {
       return null;
     }
@@ -82,6 +121,17 @@ export const enrichmentService = {
         : enriched.metroDistanceMin >= 1200 ? 0
         : 10 - ((enriched.metroDistanceMin - 200) / 1000) * 10;
       breakdown.metro = Math.max(0, Math.min(10, score));
+    }
+
+    // Derive simple noise/ecology proxies
+    // If parks score high => ecology higher; if metro very close => noise a bit higher (lower score)
+    const ecologyBase = (breakdown.parks ?? 5);
+    breakdown.ecology = Math.min(10, ecologyBase + 1);
+
+    if (typeof enriched.metroDistanceMin === 'number') {
+      const nearMetroPenalty = enriched.metroDistanceMin < 200 ? 2 : enriched.metroDistanceMin < 500 ? 1 : 0;
+      const noiseScore = Math.max(0, 10 - nearMetroPenalty - 0.5);
+      breakdown.noise = noiseScore;
     }
 
     return breakdown;
