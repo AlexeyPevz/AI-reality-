@@ -208,15 +208,81 @@ LLM_PRESET=balanced  # Опции: premium, balanced, economy, russian
 3. Добавьте вопросы в интервью
 4. Обновите описания в `getFactorDescription`
 
-## Roadmap
+## Провайдеры-источники и агрегатор
 
-- [ ] Интеграция с реальными API недвижимости
-- [ ] ML-модель для улучшения скоринга
-- [ ] Геокодирование адресов
-- [ ] Интеграция с картами
-- [ ] Push-уведомления
-- [ ] Аналитика поведения
-- [ ] A/B тестирование весов
+Система поддерживает одновременное подключение нескольких источников объектов (через прокси/API), объединение выдачи и устранение дублей:
+- Источники (через .env):
+  - Avito: `AVITO_BASE_URL`, `AVITO_API_KEY`
+  - CIAN Source: `CIAN_SOURCE_BASE_URL`, `CIAN_SOURCE_API_KEY`
+  - Yandex Source: `YANDEX_SOURCE_BASE_URL`, `YANDEX_SOURCE_API_KEY`
+  - DomClick Source: `DOMCLICK_SOURCE_BASE_URL`, `DOMCLICK_SOURCE_API_KEY`
+- Агрегатор собирает выдачу от всех активных источников и выполняет дедупликацию:
+  - Гео‑бакетизация (~500м) + нормализация адреса/названия/комнат/площади
+  - Выбор лучшего дубликата по фото/описанию/цене
+- Включение источника = просто задать ключи в `.env` (перезапуск не обязателен в dev)
+
+## Покупка/аренда, первичка/вторичка
+
+Интервью и предпочтения поддерживают:
+- `dealType`: покупка (`sale`) или аренда (`rent`)
+- `propertyType`: первичка (`new`), вторичка (`secondary`) или `any`
+- Для аренды — дополнительные поля: срок (short/long), мебель, питомцы, коммуналка, залог
+
+Все поля сохраняются в `Preferences` и участвуют в запросах к провайдерам и скоринге.
+
+## Офферы (монетизация)
+
+Ненавязчивые офферы отображаются в боте и Mini App и ведут на ваш партнерский URL через бэкенд‑редирект с UTM и логированием клика:
+- Переменные окружения:
+  - `MORTGAGE_OFFER_URL`, `INSURANCE_OFFER_URL`, `LEGAL_CHECK_OFFER_URL`, `RENT_PARTNER_OFFER_URL`
+- Эндпоинт редиректа: `GET /api/offers/redirect?type=mortgage|insurance|legal|rent&listingId=...&uid=...`
+- В боте доступна команда `/offers`
+
+## Метрики и админ-доступ
+
+- `GET /api/analytics/metrics` — сводная статистика (требуется Telegram init-data, доступ только для `ADMIN_IDS`)
+- Mini App: страница `/admin/metrics` проксирует метрики с пробросом init-data
+- Переменная окружения: `ADMIN_IDS=123,456`
+
+## Обогащение и квоты
+
+- Обогащение факторов (школы/парки/метро) через Yandex/2GIS/Overpass
+- Кэш: `ListingEnrichment` на период `ENRICHMENT_CACHE_DAYS`
+- Ограничение RPS: `ENRICHMENT_RPM` (по умолчанию 60)
+
+## Переменные окружения (ключевые)
+
+Смотри полный список в `.env.example`. Основные группы:
+- Бот/API/Mini App: `BOT_TOKEN`, `API_URL`, `MINI_APP_URL`, `CORS_ORIGIN`
+- БД/Redis: `DATABASE_URL`, `REDIS_URL`
+- Провайдеры-источники: `AVITO_*`, `CIAN_SOURCE_*`, `YANDEX_SOURCE_*`, `DOMCLICK_SOURCE_*`
+- Офферы: `MORTGAGE_OFFER_URL`, `INSURANCE_OFFER_URL`, `LEGAL_CHECK_OFFER_URL`, `RENT_PARTNER_OFFER_URL`
+- Обогащение: `YANDEX_MAPS_API_KEY`, `DGIS_API_KEY`, `OVERPASS_API_URL`, `ENRICHMENT_CACHE_DAYS`, `ENRICHMENT_RPM`
+- Админ: `ADMIN_IDS`
+
+## Тестирование и CI
+
+- Юнит/интеграционные тесты:
+  ```bash
+  npx turbo run test
+  ```
+- CI (GitHub Actions): build + lint + test, Prisma generate
+
+## API (выдержка)
+
+- `GET /health` — здоровье
+- `POST /api/search` — поиск по preferencesId (Telegram auth)
+- `GET /api/listings/:id` — объект по id
+- `GET /api/analytics/metrics` — метрики (админ)
+- `GET /api/offers/redirect` — редирект на оффер (лог клика)
+
+## Roadmap (обновлено)
+
+- [ ] Подключение реальных источников (CIAN/Яндекс/ДомКлик) и расширенный маппинг полей
+- [ ] Ещё факторы скоринга (шум/экология из внешних источников), A/B промптов
+- [ ] Постбеки партнёров, антифрод кликов/лидов
+- [ ] E2E и нагрузочное тестирование, миграции вместо db:push
+- [ ] Продакшн‑наблюдаемость (логи, метрики, алерты) и политика доступа
 
 ## Лицензия
 
