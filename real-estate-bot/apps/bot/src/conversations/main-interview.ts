@@ -31,6 +31,29 @@ export async function mainInterview(conversation: Conversation<BotContext>, ctx:
   const mode = modeResponse.callbackQuery.data.replace('mode_', '') as 'life' | 'invest';
   ctx.session.interviewMode = mode;
   
+  // New: deal type (sale/rent)
+  await ctx.reply('Выберите тип сделки:', {
+    reply_markup: new (require('grammy').InlineKeyboard)()
+      .text('🛒 Покупка', 'deal_sale')
+      .text('🔑 Аренда', 'deal_rent')
+  });
+  const dealResp = await conversation.waitForCallbackQuery(/^deal_/);
+  await dealResp.answerCallbackQuery();
+  ctx.session.dealType = dealResp.callbackQuery.data === 'deal_rent' ? 'rent' : 'sale';
+
+  // New: primary/secondary
+  await ctx.reply('Какую недвижимость рассматриваете?', {
+    reply_markup: new (require('grammy').InlineKeyboard)()
+      .text('🏗 Первичка', 'ptype_new')
+      .text('🏢 Вторичка', 'ptype_secondary')
+      .row()
+      .text('🙃 Без разницы', 'ptype_any')
+  });
+  const ptypeResp = await conversation.waitForCallbackQuery(/^ptype_/);
+  await ptypeResp.answerCallbackQuery();
+  const ptypeMap: any = { ptype_new: 'new', ptype_secondary: 'secondary', ptype_any: 'any' };
+  ctx.session.propertyType = ptypeMap[ptypeResp.callbackQuery.data];
+
   // Set default weights based on mode
   ctx.session.weights = mode === 'life' ? { ...DEFAULT_LIFE_WEIGHTS } : { ...DEFAULT_INVEST_WEIGHTS };
 
@@ -61,6 +84,28 @@ export async function mainInterview(conversation: Conversation<BotContext>, ctx:
         };
       }
     }
+  }
+
+  // Rent-specific quick block
+  if (ctx.session.dealType === 'rent') {
+    await ctx.reply('🧾 Нужна ли мебель?', { reply_markup: yesNoKeyboard });
+    const furnResp = await conversation.waitForCallbackQuery(/^(yes|no)$/);
+    await furnResp.answerCallbackQuery();
+    (ctx.session as any).furnished = furnResp.callbackQuery.data === 'yes';
+
+    await ctx.reply('🐾 Питомцы допускаются?', { reply_markup: yesNoKeyboard });
+    const petsResp = await conversation.waitForCallbackQuery(/^(yes|no)$/);
+    await petsResp.answerCallbackQuery();
+    (ctx.session as any).petsAllowed = petsResp.callbackQuery.data === 'yes';
+
+    await ctx.reply('📅 Срок аренды?', {
+      reply_markup: new (require('grammy').InlineKeyboard)()
+        .text('Короткий', 'rent_short')
+        .text('Долгий', 'rent_long')
+    });
+    const termResp = await conversation.waitForCallbackQuery(/^rent_/);
+    await termResp.answerCallbackQuery();
+    (ctx.session as any).rentPeriod = termResp.callbackQuery.data === 'rent_short' ? 'short' : 'long';
   }
 
   // Step 3: Location (for life mode)

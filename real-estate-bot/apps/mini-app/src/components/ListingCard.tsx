@@ -148,6 +148,22 @@ export const ListingCard: React.FC<ListingCardProps> = ({
             )}
           </div>
         )}
+
+        {/* Offers CTA */}
+        <div className="mt-3 flex gap-2">
+          <a
+            href={`/api/offers?type=${listing.dealType === 'rent' ? 'rent' : 'mortgage'}&listingId=${listing.id}`}
+            className="text-sm text-blue-600 dark:text-blue-400"
+          >
+            {listing.dealType === 'rent' ? 'Проверить аренду' : 'Рассчитать ипотеку'}
+          </a>
+          <a
+            href={`/api/offers?type=legal&listingId=${listing.id}`}
+            className="text-sm text-blue-600 dark:text-blue-400"
+          >
+            Юрпроверка
+          </a>
+        </div>
       </div>
     </div>
   );

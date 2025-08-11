@@ -34,16 +34,29 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       schoolsImportance: preferences.weights.schools || undefined,
       parksImportance: preferences.weights.parks || undefined,
       noiseTolerance: preferences.weights.noise || undefined,
+      propertyType: (preferences as any).propertyType || undefined,
+      // rent-specific
+      rentDepositMax: (preferences as any).rentDeposit || undefined,
+      rentPeriod: (preferences as any).rentPeriod || undefined,
+      furnished: (preferences as any).furnished || undefined,
+      petsAllowed: (preferences as any).petsAllowed || undefined,
+      utilitiesIncluded: (preferences as any).utilitiesIncluded || undefined,
     },
     weights: preferences.weights as any,
+    dealType: (preferences as any).dealType || 'sale',
   };
 
   // Get provider and search
   const provider = ProviderFactory.getDefault();
   const listings = await provider.searchListings(query);
 
-  // Cache listings
+  // Enrich and cache listings
   const cachedListings = await cacheListings(listings, provider.name);
+  // set dealType/propertyType if not present
+  cachedListings.forEach(l => {
+    if (!(l as any).dealType) (l as any).dealType = (preferences as any).dealType || 'sale';
+    if (!(l as any).propertyType) (l as any).propertyType = (preferences as any).propertyType === 'any' ? undefined : (preferences as any).propertyType;
+  });
 
   // Score each listing
   const results: MatchResult[] = [];
@@ -61,16 +74,16 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       explanation,
     });
 
-    // Save recommendation
-    await prisma.recommendation.create({
-      data: {
-        userId: preferences.userId,
-        listingId: listing.id,
-        matchScore,
-        breakdown,
-        explanation,
-      },
-    });
+      // Save recommendation
+  await prisma.recommendation.create({
+    data: {
+      userId: preferences.userId,
+      listingId: listing.id,
+      score: matchScore,
+      breakdown,
+      explanation,
+    },
+  });
   }
 
   // Sort by match score descending
@@ -84,8 +97,7 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
   const cached: Listing[] = [];
 
   for (const listing of listings) {
-    // Upsert listing cache
-    const cachedListing = await prisma.listingCache.upsert({
+    const dbListing = await prisma.listing.upsert({
       where: {
         provider_externalId: {
           provider,
@@ -95,19 +107,44 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
       create: {
         provider,
         externalId: listing.id,
-        raw: listing as any,
-        normalized: listing as any,
+        title: listing.title,
+        price: listing.price,
+        address: listing.address,
+        district: undefined,
+        metro: undefined,
+        metroDistance: undefined,
+        rooms: listing.rooms,
+        area: listing.area,
+        floor: listing.floor || 0,
+        floors: listing.totalFloors || 0,
+        description: listing.description || '',
+        images: listing.photos || [],
+        url: listing.partnerDeeplinkTemplate || '',
+        source: provider,
+        coordinates: { lat: listing.lat, lng: listing.lng } as any,
+        features: [],
+        partnerData: undefined,
+        publishedAt: new Date(),
       },
       update: {
-        raw: listing as any,
-        normalized: listing as any,
+        title: listing.title,
+        price: listing.price,
+        address: listing.address,
+        rooms: listing.rooms,
+        area: listing.area,
+        floor: listing.floor || 0,
+        floors: listing.totalFloors || 0,
+        description: listing.description || '',
+        images: listing.photos || [],
+        url: listing.partnerDeeplinkTemplate || '',
+        coordinates: { lat: listing.lat, lng: listing.lng } as any,
         updatedAt: new Date(),
       },
     });
 
     cached.push({
       ...listing,
-      id: cachedListing.id,
+      id: dbListing.id,
     });
   }
 
@@ -142,25 +179,29 @@ function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBr
                        preferences.parkingRequired ? 0 : 5;
   }
 
-  // Mock scores for other factors (in production, would use real data)
-  if (preferences.weights.schools) {
-    breakdown.schools = 5 + Math.random() * 5; // Mock
+  // Enrichment-based factors (schools, parks, metro)
+  try {
+    const { enrichmentService } = await import('../../api/src/services/enrichment.service');
+    const enriched = await enrichmentService.enrichListing(listing);
+    if (enriched) {
+      const partial = enrichmentService.computeBreakdownPart(enriched);
+      if (preferences.weights.schools && partial.schools !== undefined) breakdown.schools = partial.schools;
+      if (preferences.weights.parks && partial.parks !== undefined) breakdown.parks = partial.parks;
+      if (preferences.weights.metro && partial.metro !== undefined) breakdown.metro = partial.metro;
+    }
+  } catch {
+    // Fallback to mocks
+    if (preferences.weights.schools) breakdown.schools = 5 + Math.random() * 5;
+    if (preferences.weights.parks) breakdown.parks = 5 + Math.random() * 5;
+    if (preferences.weights.metro) breakdown.metro = 5 + Math.random() * 5;
   }
 
-  if (preferences.weights.parks) {
-    breakdown.parks = 5 + Math.random() * 5; // Mock
-  }
-
+  // Still mock noise/ecology until implemented
   if (preferences.weights.noise) {
-    breakdown.noise = 5 + Math.random() * 5; // Mock
+    breakdown.noise = 5 + Math.random() * 5;
   }
-
   if (preferences.weights.ecology) {
-    breakdown.ecology = 5 + Math.random() * 5; // Mock
-  }
-
-  if (preferences.weights.metro) {
-    breakdown.metro = 5 + Math.random() * 5; // Mock
+    breakdown.ecology = 5 + Math.random() * 5;
   }
 
   // Investment factors

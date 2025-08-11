@@ -71,13 +71,17 @@ export async function authenticateTelegram(
           tgId: BigInt(telegramId),
         },
       });
-    }
-
-    // Set user data in request
-    req.userId = user.id;
-    req.telegramId = bigIntToNumber(user.tgId)!;
-
-    next();
+         }
+ 
+     // Admin check (optional)
+     const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+ 
+     // Set user data in request
+     req.userId = user.id;
+     req.telegramId = bigIntToNumber(user.tgId)!;
+     (req as any).isAdmin = adminIds.includes(String(telegramId));
+ 
+     next();
   } catch (error) {
     console.error('Auth error:', error);
     res.status(401).json({ error: 'Authentication failed' });

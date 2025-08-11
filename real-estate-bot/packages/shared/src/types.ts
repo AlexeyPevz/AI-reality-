@@ -46,8 +46,16 @@ export interface Preferences {
   rooms?: number[];
   areaMin?: number;
   areaMax?: number;
+  propertyType?: 'new' | 'secondary' | 'any';
   newBuilding?: boolean;
   parkingRequired?: boolean;
+  dealType?: DealType;
+  // Rent-specific
+  rentDeposit?: number;
+  rentPeriod?: 'short' | 'long';
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  utilitiesIncluded?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,8 +82,16 @@ export interface QueryDTO {
     schoolsImportance?: number;
     parksImportance?: number;
     noiseTolerance?: number;
+    propertyType?: 'new' | 'secondary' | 'any';
+    // Rent-specific
+    rentDepositMax?: number;
+    rentPeriod?: 'short' | 'long';
+    furnished?: boolean;
+    petsAllowed?: boolean;
+    utilitiesIncluded?: boolean;
   };
   weights: PreferenceWeights;
+  dealType?: DealType;
 }
 
 // Listing types
@@ -99,6 +115,15 @@ export interface Listing {
   hasParking?: boolean;
   isNewBuilding?: boolean;
   developer?: string;
+  dealType?: DealType;
+  propertyType?: 'new' | 'secondary';
+  // Rent-specific attributes
+  rentDeposit?: number;
+  rentPeriod?: 'short' | 'long';
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  utilitiesIncluded?: boolean;
+  availableFrom?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

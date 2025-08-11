@@ -49,6 +49,13 @@ model Preferences {
   propertyType String? // 'new' | 'secondary' | 'any'
   newBuilding Boolean?
   parkingRequired Boolean?
+  dealType String? // 'sale' | 'rent'
+  // Rent-specific
+  rentDeposit Float?
+  rentPeriod  String?
+  furnished   Boolean?
+  petsAllowed Boolean?
+  utilitiesIncluded Boolean?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -157,6 +164,15 @@ model Listing {
   features    String[]
   partnerData Json?
   publishedAt DateTime
+  dealType    String?  // 'sale' | 'rent'
+  propertyType String? // 'new' | 'secondary'
+  // Rent-specific attributes
+  rentDeposit Float?
+  rentPeriod  String?
+  furnished   Boolean?
+  petsAllowed Boolean?
+  utilitiesIncluded Boolean?
+  availableFrom DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -164,6 +180,7 @@ model Listing {
   recommendations Recommendation[]
   clicks          Click[]
   notifications   Notification[]
+  enrichment      ListingEnrichment?
 
   @@unique([provider, externalId])
   @@index([provider])
@@ -221,4 +238,26 @@ model Notification {
 
   @@index([userId])
   @@index([subscriptionId])
+}
+
+model ListingCache {
+  id         String   @id @default(uuid())
+  provider   String
+  externalId String
+  raw        Json
+  normalized Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([provider, externalId])
+}
+
+model ListingEnrichment {
+  id         String   @id @default(uuid())
+  listingId  String   @unique
+  data       Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
 }

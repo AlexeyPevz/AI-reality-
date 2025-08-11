@@ -11,6 +11,7 @@ import searchRoutes from './routes/search.routes';
 import listingsRoutes from './routes/listings.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import feedbackRoutes from './routes/feedback.routes';
+import offersRoutes from './routes/offers.routes';
 
 const app = express();
 
@@ -26,6 +27,10 @@ app.use(cors({
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Request logging
+import { requestLogger } from './middleware/logger';
+app.use(requestLogger);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -52,6 +57,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/listings', listingsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/offers', offersRoutes);
 
 // 404 handler
 app.use((req, res) => {

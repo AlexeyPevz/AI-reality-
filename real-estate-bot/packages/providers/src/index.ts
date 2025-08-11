@@ -5,6 +5,11 @@ import { DomClickProvider } from './domclick-provider';
 import { YandexRealtyProvider } from './yandex-realty-provider';
 import { CianPartnerProvider } from './cian-partner-provider';
 import { AllInOneProvider } from './all-in-one-base';
+import { AggregatingProvider } from './aggregator';
+import { AvitoProvider } from './avito-provider';
+import { CianSourceProvider } from './cian-source-provider';
+import { YandexSourceProvider } from './yandex-source-provider';
+import { DomClickSourceProvider } from './domclick-source-provider';
 
 export * from './base';
 export * from './partner-base';
@@ -14,6 +19,10 @@ export * from './pik-provider';
 export * from './domclick-provider';
 export * from './yandex-realty-provider';
 export * from './cian-partner-provider';
+export * from './avito-provider';
+export * from './cian-source-provider';
+export * from './yandex-source-provider';
+export * from './domclick-source-provider';
 
 // Provider factory
 export class ProviderFactory {
@@ -22,7 +31,31 @@ export class ProviderFactory {
   static {
     // Register default providers
     this.register(new MockListingsProvider());
-    
+
+    // Avito
+    if (process.env.AVITO_BASE_URL && process.env.AVITO_API_KEY) {
+      const { AvitoProvider } = require('./avito-provider');
+      this.register(new AvitoProvider({ baseURL: process.env.AVITO_BASE_URL, apiKey: process.env.AVITO_API_KEY }));
+    }
+
+    // CIAN Source
+    if (process.env.CIAN_SOURCE_BASE_URL && process.env.CIAN_SOURCE_API_KEY) {
+      const { CianSourceProvider } = require('./cian-source-provider');
+      this.register(new CianSourceProvider({ baseURL: process.env.CIAN_SOURCE_BASE_URL, apiKey: process.env.CIAN_SOURCE_API_KEY }));
+    }
+
+    // Yandex Source
+    if (process.env.YANDEX_SOURCE_BASE_URL && process.env.YANDEX_SOURCE_API_KEY) {
+      const { YandexSourceProvider } = require('./yandex-source-provider');
+      this.register(new YandexSourceProvider({ baseURL: process.env.YANDEX_SOURCE_BASE_URL, apiKey: process.env.YANDEX_SOURCE_API_KEY }));
+    }
+
+    // DomClick Source
+    if (process.env.DOMCLICK_SOURCE_BASE_URL && process.env.DOMCLICK_SOURCE_API_KEY) {
+      const { DomClickSourceProvider } = require('./domclick-source-provider');
+      this.register(new DomClickSourceProvider({ baseURL: process.env.DOMCLICK_SOURCE_BASE_URL, apiKey: process.env.DOMCLICK_SOURCE_API_KEY }));
+    }
+
     // Register partner providers if configured
     if (process.env.PIK_PARTNER_ID && process.env.PIK_API_KEY) {
       this.register(new PIKProvider({
@@ -31,7 +64,7 @@ export class ProviderFactory {
         secretKey: process.env.PIK_SECRET_KEY
       }));
     }
-    
+
     if (process.env.DOMCLICK_PARTNER_ID && process.env.DOMCLICK_API_KEY) {
       this.register(new DomClickProvider({
         partnerId: process.env.DOMCLICK_PARTNER_ID,
@@ -39,7 +72,7 @@ export class ProviderFactory {
         secretKey: process.env.DOMCLICK_SECRET_KEY
       }));
     }
-    
+
     // Register All-in-One providers (база объектов + лиды)
     if (process.env.YANDEX_REALTY_PARTNER_ID && process.env.YANDEX_REALTY_API_KEY) {
       this.register(new YandexRealtyProvider({
@@ -54,7 +87,7 @@ export class ProviderFactory {
         }
       }));
     }
-    
+
     if (process.env.CIAN_PARTNER_ID && process.env.CIAN_PARTNER_API_KEY) {
       this.register(new CianPartnerProvider({
         partnerId: process.env.CIAN_PARTNER_ID,
@@ -83,19 +116,22 @@ export class ProviderFactory {
   }
 
   static getDefault(): ListingsProvider {
-    // Return first partner provider if available, otherwise mock
-    const partnerProviders = this.getPartnerProviders();
-    return partnerProviders.length > 0 ? partnerProviders[0] : this.providers.get('mock')!;
+    // Aggregate all registered providers except mock when possible
+    const providers = this.getAll().filter(p => p.name !== 'mock');
+    if (providers.length > 0) {
+      return new AggregatingProvider(providers);
+    }
+    return this.providers.get('mock')!;
   }
-  
+
   static getPartnerProviders(): ListingsProvider[] {
-    return this.getAll().filter(p => 
+    return this.getAll().filter(p =>
       p.name !== 'mock' && 'trackClick' in p
     );
   }
-  
+
   static getAllInOneProviders(): AllInOneProvider[] {
-    return this.getAll().filter(p => 
+    return this.getAll().filter(p =>
       p instanceof AllInOneProvider
     ) as AllInOneProvider[];
   }

@@ -16,6 +16,7 @@ import { analytics } from './services/analytics.service';
 import { startMonitoringJob } from './services/monitoring.service';
 import { subscriptionsCommand, handleSubscriptionCallback, handleNotificationToggle, createSubscriptionAfterSearch } from './commands/subscriptions';
 import { demoCommand, handleDemoSelection, handleDemoActions } from './commands/demo';
+import { InlineKeyboard } from 'grammy';
 
 // Create bot instance
 const bot = new Bot<BotContext>(config.botToken);
@@ -136,8 +137,15 @@ bot.use(async (ctx, next) => {
       rooms: ctx.session.rooms,
       areaMin: ctx.session.areaMin,
       areaMax: ctx.session.areaMax,
+      propertyType: (ctx.session as any).propertyType,
       newBuilding: ctx.session.newBuilding,
       parkingRequired: ctx.session.parkingRequired,
+      dealType: (ctx.session as any).dealType,
+      rentDeposit: (ctx.session as any).rentDeposit,
+      rentPeriod: (ctx.session as any).rentPeriod,
+      furnished: (ctx.session as any).furnished,
+      petsAllowed: (ctx.session as any).petsAllowed,
+      utilitiesIncluded: (ctx.session as any).utilitiesIncluded,
     });
 
     // Perform search
@@ -237,6 +245,15 @@ async function showSearchResult(ctx: BotContext, result: any, index: number = 0)
     }
   }
 
+  // Build offers keyboard (subtle)
+  const offersKb = new InlineKeyboard();
+  if ((listing.dealType || (ctx.session as any).dealType) !== 'rent') {
+    offersKb.url('🏦 Ипотека', `${process.env.API_URL}/api/offers/redirect?type=mortgage&source=bot&uid=${ctx.from?.id}&listingId=${listing.id}`);
+  } else {
+    offersKb.url('🔎 Проверить аренду', `${process.env.API_URL}/api/offers/redirect?type=rent&source=bot&uid=${ctx.from?.id}&listingId=${listing.id}`);
+  }
+  offersKb.row().url('⚖️ Юрпроверка', `${process.env.API_URL}/api/offers/redirect?type=legal&source=bot&uid=${ctx.from?.id}&listingId=${listing.id}`);
+
   // Send photo if available
   if (listing.photos && listing.photos.length > 0) {
     await ctx.replyWithPhoto(listing.photos[0], {
@@ -250,6 +267,8 @@ async function showSearchResult(ctx: BotContext, result: any, index: number = 0)
       reply_markup: resultActionsKeyboard,
     });
   }
+  // Add subtle offers below
+  await ctx.reply('Полезные сервисы (по желанию):', { reply_markup: offersKb });
 }
 
 // Settings callback
@@ -288,6 +307,10 @@ async function start() {
   
   // Register /demo command
   bot.command('demo', demoCommand);
+
+  // Offers command
+  const { offersCommand } = await import('./commands/offers');
+  bot.command('offers', offersCommand);
   
   // Handle demo callbacks
   bot.callbackQuery(/^demo_/, handleDemoSelection);

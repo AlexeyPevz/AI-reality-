@@ -237,6 +237,33 @@ export default function ListingDetailPage() {
             </div>
           )}
 
+          {/* Subtle offers */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold mb-2">Полезные сервисы (по желанию)</h3>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <a
+                href={`/api/offers?type=${listing.dealType === 'rent' ? 'rent' : 'mortgage'}&listingId=${listing.id}`}
+                className="text-blue-600 dark:text-blue-400"
+              >
+                {listing.dealType === 'rent' ? 'Проверить аренду' : 'Рассчитать ипотеку'}
+              </a>
+              <span className="text-gray-400">•</span>
+              <a
+                href={`/api/offers?type=legal&listingId=${listing.id}`}
+                className="text-blue-600 dark:text-blue-400"
+              >
+                Юрпроверка
+              </a>
+              <span className="text-gray-400">•</span>
+              <a
+                href={`/api/offers?type=insurance&listingId=${listing.id}`}
+                className="text-blue-600 dark:text-blue-400"
+              >
+                Страховка
+              </a>
+            </div>
+          </div>
+
           {/* Partner Info */}
           {listing.partnerData && (
             <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4">
