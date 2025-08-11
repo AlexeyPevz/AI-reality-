@@ -41,7 +41,7 @@ export class CianSourceProvider extends BaseListingsProvider {
   }
 
   private normalizeItem(it: any): Listing {
-    return {
+    const l: Listing = {
       id: String(it.id),
       title: it.title || `${it.rooms || ''}-комн. ${it.area || ''} м²`,
       address: it.address || '',
@@ -64,5 +64,7 @@ export class CianSourceProvider extends BaseListingsProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    const { ensureListingShape } = require('../../apps/api/src/services/provider-mapping.guard');
+    return ensureListingShape(l, 'cian_source');
   }
 }

@@ -45,7 +45,7 @@ export class AvitoProvider extends BaseListingsProvider {
   }
 
   private normalizeItem(it: any): Listing {
-    return {
+    const l: Listing = {
       id: String(it.id),
       title: it.title || `${it.rooms || ''}-комн. ${it.area || ''} м²`,
       address: it.address || '',
@@ -70,5 +70,7 @@ export class AvitoProvider extends BaseListingsProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    const { ensureListingShape } = require('../../apps/api/src/services/provider-mapping.guard');
+    return ensureListingShape(l, 'avito');
   }
 }
