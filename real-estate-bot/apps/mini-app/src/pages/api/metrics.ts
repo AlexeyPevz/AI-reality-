@@ -8,7 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-    const r = await axios.get(`${API_URL}/api/analytics/metrics`, { timeout: 10000 });
+    const initData = req.headers['x-init-data'] as string || '';
+    const r = await axios.get(`${API_URL}/api/analytics/metrics`, { timeout: 10000, headers: { 'X-Telegram-Init-Data': initData } });
     res.status(200).json(r.data);
   } catch (error) {
     console.error('Metrics proxy error:', error);

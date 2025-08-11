@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layouts/MainLayout';
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function MetricsPage() {
-  const { data, error, isLoading } = useSWR('/api/metrics', fetcher, { refreshInterval: 30000 });
+  const { data, error, isLoading } = useSWR('/api/metrics', (url) => fetch(url, { headers: { 'X-Init-Data': window.Telegram?.WebApp?.initData || '' } }).then(r => r.json()), { refreshInterval: 30000 });
 
   return (
     <MainLayout>
