@@ -7,6 +7,9 @@ import { CianPartnerProvider } from './cian-partner-provider';
 import { AllInOneProvider } from './all-in-one-base';
 import { AggregatingProvider } from './aggregator';
 import { AvitoProvider } from './avito-provider';
+import { CianSourceProvider } from './cian-source-provider';
+import { YandexSourceProvider } from './yandex-source-provider';
+import { DomClickSourceProvider } from './domclick-source-provider';
 
 export * from './base';
 export * from './partner-base';
@@ -17,6 +20,9 @@ export * from './domclick-provider';
 export * from './yandex-realty-provider';
 export * from './cian-partner-provider';
 export * from './avito-provider';
+export * from './cian-source-provider';
+export * from './yandex-source-provider';
+export * from './domclick-source-provider';
 
 // Provider factory
 export class ProviderFactory {
@@ -26,13 +32,28 @@ export class ProviderFactory {
     // Register default providers
     this.register(new MockListingsProvider());
 
-    // Avito (via proxy)
+    // Avito
     if (process.env.AVITO_BASE_URL && process.env.AVITO_API_KEY) {
       const { AvitoProvider } = require('./avito-provider');
-      this.register(new AvitoProvider({
-        baseURL: process.env.AVITO_BASE_URL,
-        apiKey: process.env.AVITO_API_KEY,
-      }));
+      this.register(new AvitoProvider({ baseURL: process.env.AVITO_BASE_URL, apiKey: process.env.AVITO_API_KEY }));
+    }
+
+    // CIAN Source
+    if (process.env.CIAN_SOURCE_BASE_URL && process.env.CIAN_SOURCE_API_KEY) {
+      const { CianSourceProvider } = require('./cian-source-provider');
+      this.register(new CianSourceProvider({ baseURL: process.env.CIAN_SOURCE_BASE_URL, apiKey: process.env.CIAN_SOURCE_API_KEY }));
+    }
+
+    // Yandex Source
+    if (process.env.YANDEX_SOURCE_BASE_URL && process.env.YANDEX_SOURCE_API_KEY) {
+      const { YandexSourceProvider } = require('./yandex-source-provider');
+      this.register(new YandexSourceProvider({ baseURL: process.env.YANDEX_SOURCE_BASE_URL, apiKey: process.env.YANDEX_SOURCE_API_KEY }));
+    }
+
+    // DomClick Source
+    if (process.env.DOMCLICK_SOURCE_BASE_URL && process.env.DOMCLICK_SOURCE_API_KEY) {
+      const { DomClickSourceProvider } = require('./domclick-source-provider');
+      this.register(new DomClickSourceProvider({ baseURL: process.env.DOMCLICK_SOURCE_BASE_URL, apiKey: process.env.DOMCLICK_SOURCE_API_KEY }));
     }
 
     // Register partner providers if configured

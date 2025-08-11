@@ -28,32 +28,47 @@ export class AggregatingProvider implements ListingsProvider {
 }
 
 function deduplicateListings(listings: Listing[]): Listing[] {
-  const map = new Map<string, Listing>();
+  const buckets = new Map<string, Listing[]>();
   for (const l of listings) {
-    const key = makeKey(l);
-    const existing = map.get(key);
-    if (!existing) {
-      map.set(key, l);
-    } else {
-      // Prefer listing with more photos/description and lower price
-      const better = scoreListing(l) > scoreListing(existing) ? l : existing;
-      map.set(key, better);
-    }
+    const key = makeGeoKey(l);
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(l);
   }
-  return Array.from(map.values());
+  const deduped: Listing[] = [];
+  for (const group of buckets.values()) {
+    const byAddr = new Map<string, Listing>();
+    for (const l of group) {
+      const k = makeAddressKey(l);
+      const ex = byAddr.get(k);
+      if (!ex) byAddr.set(k, l);
+      else byAddr.set(k, chooseBetter(l, ex));
+    }
+    deduped.push(...byAddr.values());
+  }
+  return deduped;
 }
 
-function makeKey(l: Listing): string {
-  const addr = (l.address || '').toLowerCase().replace(/\s+/g, ' ');
+function makeGeoKey(l: Listing): string {
+  const lat = Math.round((l.lat || 0) * 200) / 200; // ~500m bucket
+  const lng = Math.round((l.lng || 0) * 200) / 200;
+  return `${lat},${lng}`;
+}
+
+function makeAddressKey(l: Listing): string {
+  const addr = (l.address || '').toLowerCase().replace(/\s+/g, ' ').replace(/[.,]/g, '');
   const title = (l.title || '').toLowerCase().replace(/\s+/g, ' ');
   const rooms = l.rooms || 0;
   const area = Math.round(l.area || 0);
   return `${addr}|${title}|${rooms}|${area}`;
 }
 
+function chooseBetter(a: Listing, b: Listing): Listing {
+  return scoreListing(a) > scoreListing(b) ? a : b;
+}
+
 function scoreListing(l: Listing): number {
   const photosScore = (l.photos?.length || 0) * 0.5;
-  const descScore = (l.description ? 1 : 0) * 1.5;
+  const descScore = (l.description ? 1 : 0) * 1.2;
   const priceScore = l.price ? 100000000 / l.price : 0;
   return photosScore + descScore + priceScore;
 }
