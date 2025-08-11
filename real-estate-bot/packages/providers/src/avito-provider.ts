@@ -33,7 +33,7 @@ export class AvitoProvider extends BaseListingsProvider {
     return items.map((it) => this.normalizeItem(it));
   }
 
-  async getListing(id: string): Promise Listing | null {
+  async getListing(id: string): Promise<Listing | null> {
     try {
       const resp = await this.client.get(`/items/${id}`);
       const it = resp.data;
