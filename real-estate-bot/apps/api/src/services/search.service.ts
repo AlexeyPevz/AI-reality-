@@ -178,25 +178,29 @@ function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBr
                        preferences.parkingRequired ? 0 : 5;
   }
 
-  // Mock scores for other factors (in production, would use real data)
-  if (weights.schools) {
-    breakdown.schools = 5 + Math.random() * 5; // Mock
+  // Enrichment-based factors (schools, parks, metro)
+  try {
+    const { enrichmentService } = await import('./enrichment.service');
+    const enriched = await enrichmentService.enrichListing(listing);
+    if (enriched) {
+      const partial = enrichmentService.computeBreakdownPart(enriched);
+      if (weights.schools && partial.schools !== undefined) breakdown.schools = partial.schools;
+      if (weights.parks && partial.parks !== undefined) breakdown.parks = partial.parks;
+      if (weights.metro && partial.metro !== undefined) breakdown.metro = partial.metro;
+    }
+  } catch {
+    // Fallback to mocks
+    if (weights.schools) breakdown.schools = 5 + Math.random() * 5;
+    if (weights.parks) breakdown.parks = 5 + Math.random() * 5;
+    if (weights.metro) breakdown.metro = 5 + Math.random() * 5;
   }
 
-  if (weights.parks) {
-    breakdown.parks = 5 + Math.random() * 5; // Mock
-  }
-
+  // Still mock noise/ecology until implemented
   if (weights.noise) {
-    breakdown.noise = 5 + Math.random() * 5; // Mock
+    breakdown.noise = 5 + Math.random() * 5;
   }
-
   if (weights.ecology) {
-    breakdown.ecology = 5 + Math.random() * 5; // Mock
-  }
-
-  if (weights.metro) {
-    breakdown.metro = 5 + Math.random() * 5; // Mock
+    breakdown.ecology = 5 + Math.random() * 5;
   }
 
   // Investment factors
