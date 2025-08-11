@@ -1,0 +1,38 @@
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
+
+export const config = {
+  // Bot token
+  botToken: process.env.BOT_TOKEN!,
+  
+  // Database
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://user:password@localhost:5432/realestate',
+  
+  // Redis for sessions
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  
+  // Mini App URL
+  miniAppUrl: process.env.MINI_APP_URL || 'https://your-app.vercel.app',
+  
+  // API URL
+  apiUrl: process.env.API_URL || 'http://localhost:3001',
+  
+  // LLM settings
+  openRouterApiKey: process.env.OPENROUTER_API_KEY,
+  llmPreset: process.env.LLM_PRESET || 'balanced', // premium, balanced, economy, russian
+  appUrl: process.env.APP_URL || 'https://real-estate-bot.com',
+  
+  // Environment
+  nodeEnv: process.env.NODE_ENV || 'development',
+  isDevelopment: process.env.NODE_ENV !== 'production',
+  
+  // Logging
+  logLevel: process.env.LOG_LEVEL || 'info',
+};
+
+// Validate required config
+if (!config.botToken) {
+  throw new Error('BOT_TOKEN is required in environment variables');
+}

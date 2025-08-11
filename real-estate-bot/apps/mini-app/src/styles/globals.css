@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-text-color: #000000;
+  --tg-theme-hint-color: #999999;
+  --tg-theme-link-color: #2481cc;
+  --tg-theme-button-color: #2481cc;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f1f1f1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tg-theme-bg-color: #212121;
+    --tg-theme-text-color: #ffffff;
+    --tg-theme-hint-color: #aaaaaa;
+    --tg-theme-link-color: #5eabe1;
+    --tg-theme-button-color: #5eabe1;
+    --tg-theme-button-text-color: #ffffff;
+    --tg-theme-secondary-bg-color: #181818;
+  }
+}
+
+body {
+  background-color: var(--tg-theme-bg-color);
+  color: var(--tg-theme-text-color);
+}
+
+/* Custom components */
+@layer components {
+  .match-score-excellent {
+    @apply bg-green-500 text-white;
+  }
+  
+  .match-score-good {
+    @apply bg-blue-500 text-white;
+  }
+  
+  .match-score-acceptable {
+    @apply bg-yellow-500 text-white;
+  }
+  
+  .match-score-low {
+    @apply bg-gray-500 text-white;
+  }
+}
