@@ -46,6 +46,12 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       parksImportance: (preferences.weights as any).parks || undefined,
       noiseTolerance: (preferences.weights as any).noise || undefined,
       propertyType: (preferences as any).propertyType || undefined,
+      // rent-specific
+      rentDepositMax: (preferences as any).rentDeposit || undefined,
+      rentPeriod: (preferences as any).rentPeriod || undefined,
+      furnished: (preferences as any).furnished || undefined,
+      petsAllowed: (preferences as any).petsAllowed || undefined,
+      utilitiesIncluded: (preferences as any).utilitiesIncluded || undefined,
     },
     weights: preferences.weights as any,
     dealType: (preferences as any).dealType || 'sale',

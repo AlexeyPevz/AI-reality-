@@ -86,6 +86,28 @@ export async function mainInterview(conversation: Conversation<BotContext>, ctx:
     }
   }
 
+  // Rent-specific quick block
+  if (ctx.session.dealType === 'rent') {
+    await ctx.reply('🧾 Нужна ли мебель?', { reply_markup: yesNoKeyboard });
+    const furnResp = await conversation.waitForCallbackQuery(/^(yes|no)$/);
+    await furnResp.answerCallbackQuery();
+    (ctx.session as any).furnished = furnResp.callbackQuery.data === 'yes';
+
+    await ctx.reply('🐾 Питомцы допускаются?', { reply_markup: yesNoKeyboard });
+    const petsResp = await conversation.waitForCallbackQuery(/^(yes|no)$/);
+    await petsResp.answerCallbackQuery();
+    (ctx.session as any).petsAllowed = petsResp.callbackQuery.data === 'yes';
+
+    await ctx.reply('📅 Срок аренды?', {
+      reply_markup: new (require('grammy').InlineKeyboard)()
+        .text('Короткий', 'rent_short')
+        .text('Долгий', 'rent_long')
+    });
+    const termResp = await conversation.waitForCallbackQuery(/^rent_/);
+    await termResp.answerCallbackQuery();
+    (ctx.session as any).rentPeriod = termResp.callbackQuery.data === 'rent_short' ? 'short' : 'long';
+  }
+
   // Step 3: Location (for life mode)
   if (mode === 'life') {
     await ctx.reply(

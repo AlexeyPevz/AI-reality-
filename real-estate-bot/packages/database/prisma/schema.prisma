@@ -50,6 +50,12 @@ model Preferences {
   newBuilding Boolean?
   parkingRequired Boolean?
   dealType String? // 'sale' | 'rent'
+  // Rent-specific
+  rentDeposit Float?
+  rentPeriod  String?
+  furnished   Boolean?
+  petsAllowed Boolean?
+  utilitiesIncluded Boolean?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -160,6 +166,13 @@ model Listing {
   publishedAt DateTime
   dealType    String?  // 'sale' | 'rent'
   propertyType String? // 'new' | 'secondary'
+  // Rent-specific attributes
+  rentDeposit Float?
+  rentPeriod  String?
+  furnished   Boolean?
+  petsAllowed Boolean?
+  utilitiesIncluded Boolean?
+  availableFrom DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
