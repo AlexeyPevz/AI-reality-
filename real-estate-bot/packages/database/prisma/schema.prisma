@@ -49,6 +49,7 @@ model Preferences {
   propertyType String? // 'new' | 'secondary' | 'any'
   newBuilding Boolean?
   parkingRequired Boolean?
+  dealType String? // 'sale' | 'rent'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -157,6 +158,8 @@ model Listing {
   features    String[]
   partnerData Json?
   publishedAt DateTime
+  dealType    String?  // 'sale' | 'rent'
+  propertyType String? // 'new' | 'secondary'
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

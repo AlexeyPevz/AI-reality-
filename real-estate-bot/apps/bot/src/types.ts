@@ -5,42 +5,23 @@ import { User, Preferences, SavedQuery, PreferenceMode, CommutePoint, Preference
 // Session data structure
 export interface SessionData {
   userId?: string;
-  user?: User;
-  currentState?: string;
-  
-  // Interview data
-  interviewMode?: PreferenceMode;
-  budget?: {
-    min?: number;
-    max?: number;
-  };
+  user?: any;
+  interviewMode?: 'life' | 'invest';
+  dealType?: 'sale' | 'rent';
+  propertyType?: 'new' | 'secondary' | 'any';
+  budget?: { min?: number; max?: number };
   locations?: string[];
-  commutePoints?: CommutePoint[];
+  commutePoints?: any[];
   transportMode?: 'car' | 'public' | 'walk';
   rooms?: number[];
   areaMin?: number;
   areaMax?: number;
   newBuilding?: boolean;
   parkingRequired?: boolean;
-  
-  // Weights (collected during interview)
-  weights?: PreferenceWeights;
-  
-  // Current preferences being edited
-  currentPreferencesId?: string;
-  
-  // Search results
-  lastSearchResults?: string[]; // listing IDs
+  weights: PreferenceWeights;
+  currentState?: string;
+  lastSearchResults?: string[];
   currentViewingIndex?: number;
-  
-  // Feedback collection
-  awaitingFeedback?: {
-    recommendationId: string;
-    action: 'like' | 'dislike' | 'hide';
-  };
-  
-  // Input waiting state
-  waitingFor?: 'faq_input' | 'url_input' | 'kb_query' | 'feedback' | 'question';
 }
 
 // Bot context type

@@ -46,8 +46,10 @@ export interface Preferences {
   rooms?: number[];
   areaMin?: number;
   areaMax?: number;
+  propertyType?: 'new' | 'secondary' | 'any';
   newBuilding?: boolean;
   parkingRequired?: boolean;
+  dealType?: DealType;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,8 +76,10 @@ export interface QueryDTO {
     schoolsImportance?: number;
     parksImportance?: number;
     noiseTolerance?: number;
+    propertyType?: 'new' | 'secondary' | 'any';
   };
   weights: PreferenceWeights;
+  dealType?: DealType;
 }
 
 // Listing types
@@ -99,6 +103,8 @@ export interface Listing {
   hasParking?: boolean;
   isNewBuilding?: boolean;
   developer?: string;
+  dealType?: DealType;
+  propertyType?: 'new' | 'secondary';
   createdAt: Date;
   updatedAt: Date;
 }

@@ -34,16 +34,23 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       schoolsImportance: preferences.weights.schools || undefined,
       parksImportance: preferences.weights.parks || undefined,
       noiseTolerance: preferences.weights.noise || undefined,
+      propertyType: (preferences as any).propertyType || undefined,
     },
     weights: preferences.weights as any,
+    dealType: (preferences as any).dealType || 'sale',
   };
 
   // Get provider and search
   const provider = ProviderFactory.getDefault();
   const listings = await provider.searchListings(query);
 
-  // Cache listings
+  // Enrich and cache listings
   const cachedListings = await cacheListings(listings, provider.name);
+  // set dealType/propertyType if not present
+  cachedListings.forEach(l => {
+    if (!(l as any).dealType) (l as any).dealType = (preferences as any).dealType || 'sale';
+    if (!(l as any).propertyType) (l as any).propertyType = (preferences as any).propertyType === 'any' ? undefined : (preferences as any).propertyType;
+  });
 
   // Score each listing
   const results: MatchResult[] = [];

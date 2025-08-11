@@ -5,6 +5,7 @@ import { DomClickProvider } from './domclick-provider';
 import { YandexRealtyProvider } from './yandex-realty-provider';
 import { CianPartnerProvider } from './cian-partner-provider';
 import { AllInOneProvider } from './all-in-one-base';
+import { AggregatingProvider } from './aggregator';
 
 export * from './base';
 export * from './partner-base';
@@ -83,9 +84,12 @@ export class ProviderFactory {
   }
 
   static getDefault(): ListingsProvider {
-    // Return first partner provider if available, otherwise mock
-    const partnerProviders = this.getPartnerProviders();
-    return partnerProviders.length > 0 ? partnerProviders[0] : this.providers.get('mock')!;
+    // Aggregate all registered providers except mock when possible
+    const providers = this.getAll().filter(p => p.name !== 'mock');
+    if (providers.length > 0) {
+      return new AggregatingProvider(providers);
+    }
+    return this.providers.get('mock')!;
   }
   
   static getPartnerProviders(): ListingsProvider[] {
