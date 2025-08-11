@@ -288,6 +288,10 @@ async function start() {
   
   // Register /demo command
   bot.command('demo', demoCommand);
+
+  // Offers command
+  const { offersCommand } = await import('./commands/offers');
+  bot.command('offers', offersCommand);
   
   // Handle demo callbacks
   bot.callbackQuery(/^demo_/, handleDemoSelection);
