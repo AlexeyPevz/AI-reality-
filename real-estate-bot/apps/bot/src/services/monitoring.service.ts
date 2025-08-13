@@ -1,7 +1,7 @@
 import { prisma } from '@real-estate-bot/database';
 import { ProviderFactory } from '@real-estate-bot/providers';
-import { Subscription, User, Preferences, Listing } from '@real-estate-bot/shared';
-import { searchService } from './search.service';
+import type { Subscription, User, Preferences, Listing } from '@real-estate-bot/shared';
+import { searchAndScoreListings } from './search.service';
 import { Bot } from 'grammy';
 import { formatPrice } from '@real-estate-bot/shared';
 
@@ -48,15 +48,14 @@ export class MonitoringService {
     const lastCheck = subscription.lastChecked || new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Ищем новые объекты
-    const results = await searchService.searchWithScore(
-      preferences,
-      user.id,
-      20 // Максимум объектов для проверки
-    );
+    const results = await searchAndScoreListings(preferences);
 
     // Фильтруем только новые объекты с хорошим score
     const newListings = results.filter(result => {
-      const isNew = result.listing.publishedAt > lastCheck;
+      const createdAt = (result.listing as any).createdAt
+        ? new Date((result.listing as any).createdAt)
+        : new Date();
+      const isNew = createdAt > lastCheck;
       const hasGoodScore = result.matchScore >= (subscription.minScore || 7.0);
       return isNew && hasGoodScore;
     });

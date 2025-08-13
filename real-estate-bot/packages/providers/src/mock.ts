@@ -15,6 +15,9 @@ export class MockListingsProvider extends BaseListingsProvider {
     
     // Generate mock data
     this.generateMockListings();
+    // align linkTemplate for partner redirects via API
+    this.linkTemplate = this.linkTemplate || '';
+
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {

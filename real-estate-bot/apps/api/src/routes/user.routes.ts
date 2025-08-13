@@ -5,14 +5,15 @@ import { authenticateTelegram } from '../middleware/auth';
 const router = Router();
 
 // Get user profile
-router.get('/profile', authenticateTelegram, async (req, res) => {
+router.get('/profile', authenticateTelegram, async (req, res): Promise<void> => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.userId },
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     res.json(user);
@@ -23,7 +24,7 @@ router.get('/profile', authenticateTelegram, async (req, res) => {
 });
 
 // Update user profile
-router.patch('/profile', authenticateTelegram, async (req, res) => {
+router.patch('/profile', authenticateTelegram, async (req, res): Promise<void> => {
   try {
     const { phone, email } = req.body;
 

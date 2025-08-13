@@ -56,6 +56,8 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
   cachedListings.forEach(l => {
     if (!(l as any).dealType) (l as any).dealType = (preferences as any).dealType || 'sale';
     if (!(l as any).propertyType) (l as any).propertyType = (preferences as any).propertyType === 'any' ? undefined : (preferences as any).propertyType;
+    // align image field for Mini App
+    (l as any).images = (l as any).photos || [];
   });
 
   // Score each listing
@@ -92,6 +94,7 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
   // Return top 10
   return results.slice(0, 10);
 }
+
 
 async function cacheListings(listings: Listing[], provider: string): Promise<Listing[]> {
   const cached: Listing[] = [];

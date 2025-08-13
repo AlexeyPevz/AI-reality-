@@ -30,7 +30,8 @@ router.get('/:id', authenticateTelegram, async (req, res) => {
     });
 
     if (!preference) {
-      return res.status(404).json({ error: 'Preference not found' });
+      res.status(404).json({ error: 'Preference not found' });
+      return;
     }
 
     res.json(preference);
@@ -52,7 +53,8 @@ router.patch('/:id', authenticateTelegram, async (req, res) => {
     });
 
     if (!existing) {
-      return res.status(404).json({ error: 'Preference not found' });
+      res.status(404).json({ error: 'Preference not found' });
+      return;
     }
 
     const updated = await prisma.preferences.update({
@@ -79,7 +81,8 @@ router.delete('/:id', authenticateTelegram, async (req, res) => {
     });
 
     if (!existing) {
-      return res.status(404).json({ error: 'Preference not found' });
+      res.status(404).json({ error: 'Preference not found' });
+      return;
     }
 
     await prisma.preferences.delete({

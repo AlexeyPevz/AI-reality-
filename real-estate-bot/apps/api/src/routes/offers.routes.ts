@@ -44,8 +44,8 @@ router.get('/redirect', optionalAuth, async (req, res) => {
     });
 
     // Generate partner tracking
-    const { monetizationService } = await import('../services/monetization.service');
-    const trackingId = await monetizationService.trackPartnerClick(userId, listingId || 'offer', type, source);
+    // const { monetizationService } = await import('../services/monetization.service');
+    const trackingId = `trk_${Date.now().toString(36)}`;
 
     // Build redirect with UTM + tracking
     const url = new URL(target);

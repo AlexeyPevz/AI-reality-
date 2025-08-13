@@ -70,7 +70,7 @@ export class AvitoProvider extends BaseListingsProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const { ensureListingShape } = require('../../apps/api/src/services/provider-mapping.guard');
+    const { ensureListingShape } = require('@real-estate-bot/shared');
     return ensureListingShape(l, 'avito');
   }
 }

@@ -10,9 +10,10 @@ router.post('/', authenticateTelegram, async (req, res) => {
     const { recommendationId, action, reason, weightsDelta } = req.body;
 
     if (!recommendationId || !action) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'recommendationId and action are required' 
       });
+      return;
     }
 
     // Verify recommendation belongs to user
@@ -24,7 +25,8 @@ router.post('/', authenticateTelegram, async (req, res) => {
     });
 
     if (!recommendation) {
-      return res.status(404).json({ error: 'Recommendation not found' });
+      res.status(404).json({ error: 'Recommendation not found' });
+      return;
     }
 
     // Create feedback

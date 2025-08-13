@@ -17,12 +17,13 @@ export async function authenticateTelegram(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     const initData = req.headers['x-telegram-init-data'] as string;
     
     if (!initData) {
-      return res.status(401).json({ error: 'Missing Telegram init data' });
+      res.status(401).json({ error: 'Missing Telegram init data' });
+      return;
     }
 
     // Parse init data
@@ -48,13 +49,15 @@ export async function authenticateTelegram(
       .digest('hex');
 
     if (hash !== calculatedHash) {
-      return res.status(401).json({ error: 'Invalid init data' });
+      res.status(401).json({ error: 'Invalid init data' });
+      return;
     }
 
     // Parse user data
     const userParam = params.get('user');
     if (!userParam) {
-      return res.status(401).json({ error: 'User data not found' });
+      res.status(401).json({ error: 'User data not found' });
+      return;
     }
 
     const userData = JSON.parse(userParam);
@@ -93,7 +96,7 @@ export async function optionalAuth(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   const initData = req.headers['x-telegram-init-data'] as string;
   
   if (initData) {
