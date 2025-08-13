@@ -7,9 +7,9 @@ interface YandexConfig {
 }
 
 export class YandexSourceProvider extends BaseListingsProvider {
-  constructor(private cfg: YandexConfig) {
-    super('yandex_source', cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
-    this.client.defaults.headers['Authorization'] = `Bearer ${cfg.apiKey}`;
+  constructor(_cfg: YandexConfig) {
+    super('yandex_source', _cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
+    this.client.defaults.headers['Authorization'] = `Bearer ${_cfg.apiKey}`;
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {

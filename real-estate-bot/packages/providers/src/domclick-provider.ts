@@ -40,38 +40,38 @@ interface DomClickResponse {
 }
 
 export class DomClickProvider extends PartnerListingsProvider {
-  constructor(config: Omit<PartnerConfig, 'baseUrl'>) {
+  constructor(config: PartnerConfig) {
     super(
-      'ДомКлик',
+      'domclick_partner',
       {
         ...config,
-        baseUrl: 'https://api.domclick.ru/v1',
-        commissionRate: 0.5 // ДомКлик платит 0.5% от суммы сделки
+        baseUrl: config.baseUrl || 'https://api.domclick.ru/v1',
+        commissionRate: config.commissionRate ?? 0.5
       },
-      ['district', 'metro', 'rooms', 'priceMin', 'priceMax', 'areaMin', 'areaMax', 'type']
+      ['rooms', 'price', 'area', 'location', 'propertyType']
     );
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {
     try {
+      const filters = query.filters || ({} as any);
       const params: any = {
         api_key: this.config.apiKey,
         partner_id: this.config.partnerId,
-        deal_type: 'sale',
-        offer_type: query.type === 'new' ? 'primary' : 'secondary',
+        deal_type: query.dealType === 'rent' ? 'rent' : 'sale',
+        offer_type: filters.propertyType === 'new' ? 'primary' : 'secondary',
         region: 'moscow',
         sort: 'price',
         limit: 50
       };
 
-      // Фильтры
-      if (query.district) params.district = query.district;
-      if (query.metro?.length) params.metro = query.metro.join(',');
-      if (query.rooms?.length) params.rooms_count = query.rooms.join(',');
-      if (query.priceMin) params.price_min = query.priceMin;
-      if (query.priceMax) params.price_max = query.priceMax;
-      if (query.areaMin) params.area_min = query.areaMin;
-      if (query.areaMax) params.area_max = query.areaMax;
+      const districts = query.geo?.districts || [];
+      if (districts.length) params.district = districts;
+      if (filters.rooms?.length) params.rooms_count = filters.rooms.join(',');
+      if (query.budget?.min) params.price_min = query.budget.min;
+      if (query.budget?.max) params.price_max = query.budget.max;
+      if (filters.areaMin) params.area_min = filters.areaMin;
+      if (filters.areaMax) params.area_max = filters.areaMax;
 
       const response = await this.client.get('/offers/search', { params });
       const data: DomClickResponse = response.data;
@@ -79,31 +79,20 @@ export class DomClickProvider extends PartnerListingsProvider {
       return data.offers.map(offer => {
         const listing: Listing = {
           id: `domclick_${offer.id}`,
-          type: offer.isNewBuilding ? 'new' : 'secondary',
+          title: this.generateTitle(offer),
           address: offer.address.fullAddress,
-          district: offer.address.district,
-          metro: offer.address.metro?.map(m => m.name) || [],
-          coordinates: {
-            lat: offer.address.coordinates.latitude,
-            lng: offer.address.coordinates.longitude
-          },
+          lat: offer.address.coordinates.latitude,
+          lng: offer.address.coordinates.longitude,
           price: offer.price.value,
           rooms: offer.roomsCount,
           area: offer.area.value,
           floor: offer.floor,
-          floorsTotal: offer.floorsCount,
-          title: this.generateTitle(offer),
+          totalFloors: offer.floorsCount,
+          photos: offer.photos,
+          provider: 'domclick_partner',
           description: offer.description,
-          images: offer.photos,
-          url: offer.url,
-          source: 'ДомКлик',
-          partnerId: this.config.partnerId,
-          metadata: {
-            publishedAt: offer.publishedAt,
-            buildingYear: offer.buildingYear,
-            category: offer.category,
-            metroDistance: offer.address.metro?.[0]?.distance
-          }
+          createdAt: new Date(offer.publishedAt),
+          updatedAt: new Date(),
         };
 
         return this.enrichListingWithPartnerData(listing);
@@ -116,9 +105,8 @@ export class DomClickProvider extends PartnerListingsProvider {
 
   async getListing(id: string): Promise<Listing | null> {
     if (!id.startsWith('domclick_')) return null;
-    
     const offerId = id.replace('domclick_', '');
-    
+
     try {
       const response = await this.client.get(`/offers/${offerId}`, {
         params: {
@@ -126,45 +114,26 @@ export class DomClickProvider extends PartnerListingsProvider {
           partner_id: this.config.partnerId
         }
       });
-      
+
       const offer = response.data.offer;
       if (!offer) return null;
 
       const listing: Listing = {
-        id: id,
-        type: offer.isNewBuilding ? 'new' : 'secondary',
+        id,
+        title: this.generateTitle(offer),
         address: offer.address.fullAddress,
-        district: offer.address.district,
-        metro: offer.address.metro?.map((m: any) => m.name) || [],
-        coordinates: {
-          lat: offer.address.coordinates.latitude,
-          lng: offer.address.coordinates.longitude
-        },
+        lat: offer.address.coordinates.latitude,
+        lng: offer.address.coordinates.longitude,
         price: offer.price.value,
         rooms: offer.roomsCount,
         area: offer.area.value,
         floor: offer.floor,
-        floorsTotal: offer.floorsCount,
-        title: this.generateTitle(offer),
+        totalFloors: offer.floorsCount,
+        photos: offer.photos,
+        provider: 'domclick_partner',
         description: offer.description,
-        images: offer.photos,
-        url: offer.url,
-        source: 'ДомКлик',
-        partnerId: this.config.partnerId,
-        metadata: {
-          publishedAt: offer.publishedAt,
-          buildingYear: offer.buildingYear,
-          category: offer.category,
-          metroDistance: offer.address.metro?.[0]?.distance,
-          // Дополнительная информация
-          balcony: offer.balcony,
-          renovation: offer.renovation,
-          parking: offer.parking,
-          mortgage: offer.mortgageAvailable,
-          // Информация о продавце
-          sellerType: offer.sellerType,
-          commission: offer.agentCommission
-        }
+        createdAt: new Date(offer.publishedAt),
+        updatedAt: new Date(),
       };
 
       return this.enrichListingWithPartnerData(listing);
@@ -175,61 +144,8 @@ export class DomClickProvider extends PartnerListingsProvider {
   }
 
   private generateTitle(offer: any): string {
-    const roomsText = offer.roomsCount === 0 ? 'Студия' : `${offer.roomsCount}-комн квартира`;
+    const roomsText = offer.roomsCount === 0 ? 'Студия' : `${offer.roomsCount}-комн. квартира`;
     const typeText = offer.isNewBuilding ? 'в новостройке' : '';
     return `${roomsText} ${offer.area.value} м² ${typeText}`.trim();
-  }
-
-  // Специальные методы ДомКлик
-
-  async getMortgageCalculation(listingId: string, initialPayment: number): Promise<any> {
-    try {
-      const response = await this.client.post('/mortgage/calculate', {
-        offer_id: listingId.replace('domclick_', ''),
-        initial_payment: initialPayment,
-        partner_id: this.config.partnerId
-      });
-      
-      return {
-        monthlyPayment: response.data.monthly_payment,
-        rate: response.data.rate,
-        term: response.data.term,
-        totalAmount: response.data.total_amount,
-        programs: response.data.available_programs
-      };
-    } catch (error) {
-      console.error('Mortgage calculation error:', error);
-      return null;
-    }
-  }
-
-  async getSimilarListings(listingId: string): Promise<Listing[]> {
-    try {
-      const response = await this.client.get(`/offers/${listingId.replace('domclick_', '')}/similar`, {
-        params: {
-          api_key: this.config.apiKey,
-          limit: 5
-        }
-      });
-      
-      return response.data.offers.map((offer: any) => 
-        this.enrichListingWithPartnerData(this.transformOffer(offer))
-      );
-    } catch {
-      return [];
-    }
-  }
-
-  private transformOffer(offer: any): Listing {
-    // Вспомогательный метод для преобразования
-    return {
-      id: `domclick_${offer.id}`,
-      type: offer.isNewBuilding ? 'new' : 'secondary',
-      address: offer.address.fullAddress,
-      price: offer.price.value,
-      rooms: offer.roomsCount,
-      area: offer.area.value,
-      // ... остальные поля
-    } as Listing;
   }
 }

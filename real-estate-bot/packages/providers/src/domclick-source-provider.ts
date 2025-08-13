@@ -7,9 +7,9 @@ interface DomClickConfig {
 }
 
 export class DomClickSourceProvider extends BaseListingsProvider {
-  constructor(private cfg: DomClickConfig) {
-    super('domclick_source', cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
-    this.client.defaults.headers['Authorization'] = `Bearer ${cfg.apiKey}`;
+  constructor(_cfg: DomClickConfig) {
+    super('domclick_source', _cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
+    this.client.defaults.headers['Authorization'] = `Bearer ${_cfg.apiKey}`;
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {
@@ -24,14 +24,14 @@ export class DomClickSourceProvider extends BaseListingsProvider {
       deal_type: query.dealType,
       limit: 100,
     };
-    const resp = await this.client.get('/api/search', { params });
+    const resp = await this.client.get('/search', { params });
     const items: any[] = resp.data?.items || [];
     return items.map((it) => this.normalizeItem(it));
   }
 
   async getListing(id: string): Promise<Listing | null> {
     try {
-      const resp = await this.client.get(`/api/items/${id}`);
+      const resp = await this.client.get(`/items/${id}`);
       const it = resp.data;
       if (!it) return null;
       return this.normalizeItem(it);
@@ -41,28 +41,32 @@ export class DomClickSourceProvider extends BaseListingsProvider {
   }
 
   private normalizeItem(it: any): Listing {
-    return {
+    const l: Listing = {
       id: String(it.id),
       title: it.title || `${it.rooms || ''}-комн. ${it.area || ''} м²`,
       address: it.address || '',
-      lat: it.geo?.lat || 0,
-      lng: it.geo?.lng || 0,
-      price: this.normalizePrice(it.price_rub ?? it.price),
+      lat: it.location?.lat || 0,
+      lng: it.location?.lng || 0,
+      price: this.normalizePrice(it.price),
       rooms: this.normalizeRooms(it.rooms),
-      area: this.normalizeArea(it.area_total ?? it.area),
+      area: this.normalizeArea(it.area),
       floor: it.floor || 0,
-      totalFloors: it.floors_total || 0,
+      totalFloors: it.floors || 0,
       year: it.year || undefined,
-      photos: (it.images || []).slice(0, 5),
+      stage: undefined,
+      photos: (it.images || []).map((i: any) => i.url).slice(0, 5),
       provider: 'domclick_source',
       partnerDeeplinkTemplate: it.url,
       description: it.description || '',
-      hasParking: Boolean(it.parking),
+      hasParking: it.parking || false,
       isNewBuilding: it.property_type === 'new',
+      developer: undefined,
       dealType: it.deal_type || undefined,
       propertyType: it.property_type || undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    const { ensureListingShape } = require('@real-estate-bot/shared');
+    return ensureListingShape(l, 'domclick_source');
   }
 }

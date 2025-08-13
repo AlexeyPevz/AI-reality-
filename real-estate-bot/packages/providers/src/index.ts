@@ -1,27 +1,11 @@
 import { ListingsProvider } from '@real-estate-bot/shared';
 import { MockListingsProvider } from './mock';
-import { PIKProvider } from './pik-provider';
-import { DomClickProvider } from './domclick-provider';
-import { YandexRealtyProvider } from './yandex-realty-provider';
-import { CianPartnerProvider } from './cian-partner-provider';
 import { AggregatingProvider } from './aggregator';
-import { AvitoProvider } from './avito-provider';
-import { CianSourceProvider } from './cian-source-provider';
-import { YandexSourceProvider } from './yandex-source-provider';
-import { DomClickSourceProvider } from './domclick-source-provider';
 
 export * from './base';
 export * from './mock';
-export * from './avito-provider';
-export * from './cian-source-provider';
-export * from './yandex-source-provider';
-export * from './domclick-source-provider';
 export * from './partner-base';
 export * from './all-in-one-base';
-export * from './pik-provider';
-export * from './domclick-provider';
-export * from './yandex-realty-provider';
-export * from './cian-partner-provider';
 
 // Provider factory
 export class ProviderFactory {
@@ -57,30 +41,35 @@ export class ProviderFactory {
 
     // Register partner providers if configured
     if (process.env.PIK_PARTNER_ID && process.env.PIK_API_KEY) {
+      const { PIKProvider } = require('./pik-provider');
       this.register(new PIKProvider({
         partnerId: process.env.PIK_PARTNER_ID,
         apiKey: process.env.PIK_API_KEY,
-        secretKey: process.env.PIK_SECRET_KEY,
-        baseUrl: 'https://api.pik.ru/v2'
+        secretKey: process.env.PIK_SECRET_KEY || '',
+        baseUrl: 'https://api.pik.ru/v2',
+        commissionRate: 3
       }));
     }
 
     if (process.env.DOMCLICK_PARTNER_ID && process.env.DOMCLICK_API_KEY) {
+      const { DomClickProvider } = require('./domclick-provider');
       this.register(new DomClickProvider({
         partnerId: process.env.DOMCLICK_PARTNER_ID,
         apiKey: process.env.DOMCLICK_API_KEY,
-        secretKey: process.env.DOMCLICK_SECRET_KEY,
-        baseUrl: 'https://api.domclick.ru/v1'
+        secretKey: process.env.DOMCLICK_SECRET_KEY || '',
+        baseUrl: 'https://api.domclick.ru/v1',
+        commissionRate: 0.5
       }));
     }
 
     // Register All-in-One providers (база объектов + лиды)
     if (process.env.YANDEX_REALTY_PARTNER_ID && process.env.YANDEX_REALTY_API_KEY) {
+      const { YandexRealtyProvider } = require('./yandex-realty-provider');
       this.register(new YandexRealtyProvider({
         partnerId: process.env.YANDEX_REALTY_PARTNER_ID,
         apiKey: process.env.YANDEX_REALTY_API_KEY,
         secretKey: process.env.YANDEX_REALTY_SECRET_KEY || '',
-        baseURL: 'https://realty-partners.yandex.ru/api/v1',
+        baseUrl: 'https://realty-partners.yandex.ru/api/v1',
         name: 'yandex_realty',
         supportsFilters: ['price', 'rooms', 'area', 'location', 'propertyType'],
         commissionRate: 0.005,
@@ -99,11 +88,12 @@ export class ProviderFactory {
     }
 
     if (process.env.CIAN_PARTNER_ID && process.env.CIAN_PARTNER_API_KEY) {
+      const { CianPartnerProvider } = require('./cian-partner-provider');
       this.register(new CianPartnerProvider({
         partnerId: process.env.CIAN_PARTNER_ID,
         apiKey: process.env.CIAN_PARTNER_API_KEY,
         secretKey: process.env.CIAN_PARTNER_SECRET_KEY || '',
-        baseURL: 'https://partners.cian.ru/api/v2',
+        baseUrl: 'https://partners.cian.ru/api/v2',
         name: 'cian_partner',
         supportsFilters: ['price', 'rooms', 'area', 'location', 'metro', 'propertyType'],
         commissionRate: 0.01,

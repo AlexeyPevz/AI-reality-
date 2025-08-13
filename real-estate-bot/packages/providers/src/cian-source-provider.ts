@@ -7,9 +7,9 @@ interface CianConfig {
 }
 
 export class CianSourceProvider extends BaseListingsProvider {
-  constructor(private cfg: CianConfig) {
-    super('cian_source', cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
-    this.client.defaults.headers['Authorization'] = `Bearer ${cfg.apiKey}`;
+  constructor(_cfg: CianConfig) {
+    super('cian_source', _cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
+    this.client.defaults.headers['Authorization'] = `Bearer ${_cfg.apiKey}`;
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {
