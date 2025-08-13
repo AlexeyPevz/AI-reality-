@@ -10,12 +10,6 @@
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
-    "dist",
-    "src/cian-partner-provider.ts",
-    "src/yandex-realty-provider.ts",
-    "src/pik-provider.ts",
-    "src/domclick-provider.ts",
-    "src/partner-base.ts",
-    "src/all-in-one-base.ts"
+    "dist"
   ]
 }

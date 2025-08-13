@@ -28,9 +28,14 @@ export interface LeadSubmissionResponse {
 export abstract class AllInOneProvider extends PartnerListingsProvider {
   protected leadConfig: AllInOneConfig;
 
-  constructor(config: AllInOneConfig) {
-    super(config);
+  constructor(config: AllInOneConfig & { name: string; baseURL: string; supportsFilters: string[] }) {
+    super(config.name, { ...config, baseUrl: config.baseURL }, config.supportsFilters);
     this.leadConfig = config;
+  }
+
+  // Упрощённый помощник для добавления partnerData и ссылки
+  protected enrichListing(listing: Listing, userId?: string): Listing {
+    return this.enrichListingWithPartnerData(this.enrichListingWithLeadInfo(listing), userId);
   }
 
   // Отправка лида партнеру
@@ -204,7 +209,7 @@ export abstract class AllInOneProvider extends PartnerListingsProvider {
   }> {
     try {
       const response = await axios.get(
-        `${this.config.baseURL}/leads/${leadId}/status`,
+        `${this.config.baseUrl}/leads/${leadId}/status`,
         {
           headers: {
             'Authorization': `Bearer ${this.config.apiKey}`
@@ -224,7 +229,7 @@ export abstract class AllInOneProvider extends PartnerListingsProvider {
   // Обогащение объекта информацией о комиссии за лид
   protected enrichListingWithLeadInfo(listing: Listing): Listing {
     // Добавляем информацию о потенциальной комиссии
-    const enriched = { ...listing };
+    const enriched = { ...listing } as any;
     
     // Расчет потенциальной комиссии за лид по этому объекту
     const estimatedLeadPrice = this.estimateLeadPriceForListing(listing);
@@ -236,7 +241,7 @@ export abstract class AllInOneProvider extends PartnerListingsProvider {
     enriched.partnerData.estimatedLeadRevenue = estimatedLeadPrice;
     enriched.partnerData.leadProgramActive = true;
     
-    return enriched;
+    return enriched as Listing;
   }
 
   // Оценка стоимости лида для конкретного объекта
@@ -254,5 +259,4 @@ export abstract class AllInOneProvider extends PartnerListingsProvider {
   }
 }
 
-// Экспорт типов для использования в конкретных провайдерах
 export type { LeadSubmissionResponse, AllInOneConfig };
