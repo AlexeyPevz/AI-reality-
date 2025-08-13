@@ -1,5 +1,5 @@
 import { PartnerListingsProvider, PartnerConfig } from './partner-base';
-import { Listing, QueryDTO, Lead } from '@real-estate-bot/shared';
+import { Listing, Lead } from '@real-estate-bot/shared';
 import axios from 'axios';
 
 export interface AllInOneConfig extends PartnerConfig {
@@ -258,5 +258,3 @@ export abstract class AllInOneProvider extends PartnerListingsProvider {
     return pricing.base;
   }
 }
-
-export type { LeadSubmissionResponse, AllInOneConfig };
