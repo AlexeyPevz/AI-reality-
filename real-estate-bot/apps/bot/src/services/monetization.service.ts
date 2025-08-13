@@ -1,19 +1,4 @@
 import { prisma } from '@real-estate-bot/database';
-import { Click } from '@real-estate-bot/shared';
-
-interface PartnerConversion {
-  id: string;
-  userId: string;
-  listingId: string;
-  partnerId: string;
-  trackingId: string;
-  status: 'pending' | 'approved' | 'rejected';
-  amount?: number;
-  commission?: number;
-  clickedAt: Date;
-  convertedAt?: Date;
-  metadata?: Record<string, any>;
-}
 
 export class MonetizationService {
   // Трекинг клика с генерацией партнерской ссылки
@@ -94,16 +79,16 @@ export class MonetizationService {
       // Проверяем статус у партнера
       const status = await this.checkPartnerConversionStatus(partnerId, trackingId);
       
-      if (status.status !== 'pending') {
-        await this.updateConversionStatus(click.id, status);
+      if (status.status === 'approved' || status.status === 'rejected') {
+        await this.updateConversionStatus(click.id, status as { status: 'approved' | 'rejected'; amount?: number; commission?: number; });
       }
     }
   }
 
   // Проверка статуса у конкретного партнера
   private async checkPartnerConversionStatus(
-    partnerId: string,
-    trackingId: string
+    _partnerId: string,
+    _trackingId: string
   ): Promise<{
     status: 'pending' | 'approved' | 'rejected';
     amount?: number;
@@ -220,7 +205,7 @@ export class MonetizationService {
     for (const click of clicks) {
       const partnerId = click.meta?.partnerId as string;
       const status = click.meta?.conversionStatus as string;
-      const commission = click.meta?.commission as number || 0;
+      const commission = (click.meta?.commission as number) || 0;
 
       if (!stats.byPartner[partnerId]) {
         stats.byPartner[partnerId] = {
@@ -253,7 +238,7 @@ export class MonetizationService {
 
   // Получение фильтра по дате
   private getDateFilter(period: 'day' | 'week' | 'month' | 'all') {
-    if (period === 'all') return {};
+    if (period === 'all') return {} as any;
 
     const now = new Date();
     let startDate: Date;
@@ -272,9 +257,9 @@ export class MonetizationService {
 
     return {
       timestamp: {
-        gte: startDate
+        gte: startDate!
       }
-    };
+    } as any;
   }
 
   // Получение топ конвертирующих объектов
@@ -311,16 +296,16 @@ export class MonetizationService {
 
     // Считаем conversion rate и сортируем
     const listings = Object.values(listingStats)
-      .map(stat => ({
+      .map((stat: any) => ({
         ...stat,
         conversionRate: stat.clicks > 0 
           ? (stat.conversions / stat.clicks) * 100 
           : 0
       }))
-      .sort((a, b) => b.revenue - a.revenue)
+      .sort((a: any, b: any) => b.revenue - a.revenue)
       .slice(0, limit);
 
-    return listings;
+    return listings as any;
   }
 }
 

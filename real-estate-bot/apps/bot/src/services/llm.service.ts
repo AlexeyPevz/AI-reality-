@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { 
-  LLMProvider, 
   LLMModel, 
   AgentRole, 
   Message, 
@@ -10,7 +9,7 @@ import {
 } from '@real-estate-bot/shared';
 import { PROMPTS } from '../prompts';
 import { config } from '../config';
-import { MODELS, MODEL_PRESETS, selectOptimalModel } from '../config/models';
+import { MODELS, MODEL_PRESETS } from '../config/models';
 
 interface OpenRouterResponse {
   id: string;
@@ -276,7 +275,7 @@ export class LLMService {
     } catch {
       // Fallback weights if parsing fails
       return {
-        weights: DEFAULT_WEIGHTS[userProfile.mode || 'life'],
+        weights: (DEFAULT_WEIGHTS as any)[userProfile.mode || 'life'],
         reasoning: "Использованы стандартные веса для вашего типа поиска"
       };
     }

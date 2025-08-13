@@ -1,5 +1,5 @@
 import { prisma } from '@real-estate-bot/database';
-import { Lead, LeadQuality, LeadStatus, User, Preferences } from '@real-estate-bot/shared';
+import { Lead, LeadQuality, LeadStatus } from '@real-estate-bot/shared';
 
 export class LeadService {
   // Создание или обновление лида
@@ -225,25 +225,6 @@ export class LeadService {
     // });
   }
 
-  // Очистка персональных данных перед отправкой
-  private sanitizeLead(lead: Lead): Partial<Lead> {
-    return {
-      id: lead.id,
-      quality: lead.quality,
-      score: lead.score,
-      budget: lead.budget,
-      locations: lead.locations,
-      rooms: lead.rooms,
-      area: lead.area,
-      type: lead.type,
-      purpose: lead.purpose,
-      // Контакты передаем только если покупатель оплатил
-      phone: lead.phone,
-      name: lead.name,
-      telegramUsername: lead.telegramUsername
-    };
-  }
-
   // CRUD операции
   private async createLead(data: Partial<Lead>): Promise<Lead> {
     // В реальной БД создаем запись
@@ -334,8 +315,8 @@ export class LeadService {
 
     const stats = {
       total: 0,
-      byQuality: { hot: 0, warm: 0, cold: 0 },
-      byStatus: { new: 0, qualified: 0, contacted: 0, sold: 0, rejected: 0 },
+      byQuality: { hot: 0, warm: 0, cold: 0 } as Record<LeadQuality, number>,
+      byStatus: { new: 0, qualified: 0, contacted: 0, sold: 0, rejected: 0 } as Record<LeadStatus, number>,
       totalRevenue: 0,
       avgLeadPrice: 0
     };

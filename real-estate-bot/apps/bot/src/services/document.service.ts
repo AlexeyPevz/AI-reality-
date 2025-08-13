@@ -1,5 +1,5 @@
 import { prisma } from '@real-estate-bot/database';
-import { KnowledgeDocument, DocumentChunk } from '@real-estate-bot/shared';
+import { KnowledgeDocument } from '@real-estate-bot/shared';
 import { embeddingsService } from './embeddings.service';
 import axios from 'axios';
 import * as cheerio from 'cheerio';

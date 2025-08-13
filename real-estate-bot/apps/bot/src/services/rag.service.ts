@@ -3,10 +3,8 @@ import {
   DocumentChunk, 
   RAGQuery, 
   RAGResponse,
-  ConversationContext,
-  Message 
 } from '@real-estate-bot/shared';
-import { embeddingsService, EmbeddingsService } from './embeddings.service';
+import { embeddingsService } from './embeddings.service';
 import { llmService } from './llm.service';
 import { Prisma } from '@prisma/client';
 
@@ -53,8 +51,8 @@ export class RAGService {
 
       // Filter by threshold and map to DocumentChunk
       return chunks
-        .filter(chunk => chunk.similarity >= threshold)
-        .map(chunk => ({
+        .filter((chunk: any) => chunk.similarity >= threshold)
+        .map((chunk: any) => ({
           id: chunk.id,
           documentId: chunk.documentId || chunk.id,
           content: chunk.content,
@@ -85,12 +83,12 @@ export class RAGService {
       .join('\n\n');
 
     // Prepare conversation for LLM
-    const conversationContext: ConversationContext = {
+    const conversationContext = {
       userId: 'system',
-      role: 'consultant',
+      role: 'consultant' as const,
       history: [
         {
-          role: 'system',
+          role: 'system' as const,
           content: `Ты - эксперт по недвижимости. Используй предоставленную информацию из базы знаний для ответа на вопрос пользователя.
           
 ВАЖНО:
@@ -105,13 +103,13 @@ ${relevantContext}
 ${context ? `Дополнительный контекст: ${context}` : ''}`
         },
         {
-          role: 'user',
+          role: 'user' as const,
           content: query
         }
       ]
     };
 
-    const response = await llmService.generateResponse(conversationContext);
+    const response = await llmService.generateResponse(conversationContext as any);
     return response.message;
   }
 
@@ -128,7 +126,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
     );
 
     // Extract sources
-    const sources = this.extractSources(chunks);
+    const sources = this.extractSources(chunks as any);
 
     return {
       chunks,
@@ -146,13 +144,13 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
     const sourcesMap = new Map<string, any>();
 
     for (const chunk of chunks) {
-      const parentTitle = chunk.metadata.parentTitle || 'Unknown Source';
+      const parentTitle = (chunk.metadata as any).parentTitle || 'Unknown Source';
       
       if (!sourcesMap.has(parentTitle)) {
         sourcesMap.set(parentTitle, {
           title: parentTitle,
-          url: chunk.metadata.url,
-          pageNumber: chunk.metadata.pageNumber
+          url: (chunk.metadata as any).url,
+          pageNumber: (chunk.metadata as any).pageNumber
         });
       }
     }
@@ -177,7 +175,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
       take: query.topK || 5
     });
 
-    return chunks.map(chunk => ({
+    return chunks.map((chunk: any) => ({
       id: chunk.id,
       documentId: chunk.parentId || chunk.id,
       content: chunk.content,
@@ -188,7 +186,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
   }
 
   // Mock search for development
-  private async mockSearch(query: RAGQuery): Promise<DocumentChunk[]> {
+  private async mockSearch(_query: RAGQuery): Promise<DocumentChunk[]> {
     // Return some mock chunks for testing
     return [
       {
@@ -200,7 +198,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
           startIndex: 0,
           endIndex: 100,
           parentTitle: 'Гид по покупке новостройки'
-        },
+        } as any,
         similarity: 0.9
       },
       {
@@ -212,7 +210,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
           startIndex: 200,
           endIndex: 300,
           parentTitle: 'Ипотечное кредитование'
-        },
+        } as any,
         similarity: 0.85
       }
     ];
@@ -243,7 +241,7 @@ ${context ? `Дополнительный контекст: ${context}` : ''}`
     });
 
     return results
-      .map(chunk => chunk.metadata.question as string)
+      .map((chunk: any) => (chunk.metadata as any).question as string)
       .filter(Boolean);
   }
 }

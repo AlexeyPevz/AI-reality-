@@ -15,6 +15,14 @@ export interface CreatePreferencesData {
   areaMax?: number;
   newBuilding?: boolean;
   parkingRequired?: boolean;
+  // Extended fields
+  dealType?: 'sale' | 'rent';
+  propertyType?: 'new' | 'secondary' | 'any';
+  rentDeposit?: number;
+  rentPeriod?: 'short' | 'long';
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  utilitiesIncluded?: boolean;
 }
 
 export class PreferencesService {
@@ -32,15 +40,15 @@ export class PreferencesService {
         rooms: data.rooms || [],
         areaMin: data.areaMin,
         areaMax: data.areaMax,
-        propertyType: (data as any).propertyType,
+        propertyType: data.propertyType,
         newBuilding: data.newBuilding,
         parkingRequired: data.parkingRequired,
-        dealType: (data as any).dealType,
-        rentDeposit: (data as any).rentDeposit,
-        rentPeriod: (data as any).rentPeriod,
-        furnished: (data as any).furnished,
-        petsAllowed: (data as any).petsAllowed,
-        utilitiesIncluded: (data as any).utilitiesIncluded,
+        dealType: data.dealType,
+        rentDeposit: data.rentDeposit,
+        rentPeriod: data.rentPeriod,
+        furnished: data.furnished,
+        petsAllowed: data.petsAllowed,
+        utilitiesIncluded: data.utilitiesIncluded,
       },
     });
   }

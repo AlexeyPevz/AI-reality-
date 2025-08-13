@@ -1,4 +1,5 @@
-import { prisma, Preferences, ListingCache } from '@real-estate-bot/database';
+import { prisma } from '@real-estate-bot/database';
+import type { Preferences } from '@real-estate-bot/shared';
 import { 
   QueryDTO, 
   Listing, 
@@ -7,7 +8,6 @@ import {
   calculateWeightedScore,
   calculateTransportScore,
   calculatePriceScore,
-  normalizeScore
 } from '@real-estate-bot/shared';
 import { ProviderFactory } from '@real-estate-bot/providers';
 import { llmService } from './llm.service';
@@ -26,14 +26,14 @@ export async function searchAndScoreListings(preferences: Preferences): Promise<
       commutePoints: preferences.commutePoints as any[],
     },
     filters: {
-      rooms: preferences.rooms.length > 0 ? preferences.rooms : undefined,
+      rooms: preferences.rooms && preferences.rooms.length > 0 ? preferences.rooms : undefined,
       areaMin: preferences.areaMin || undefined,
       areaMax: preferences.areaMax || undefined,
       newBuilding: preferences.newBuilding || undefined,
       parking: preferences.parkingRequired || undefined,
-      schoolsImportance: preferences.weights.schools || undefined,
-      parksImportance: preferences.weights.parks || undefined,
-      noiseTolerance: preferences.weights.noise || undefined,
+      schoolsImportance: (preferences.weights as any)?.schools || undefined,
+      parksImportance: (preferences.weights as any)?.parks || undefined,
+      noiseTolerance: (preferences.weights as any)?.noise || undefined,
       propertyType: (preferences as any).propertyType || undefined,
       // rent-specific
       rentDepositMax: (preferences as any).rentDeposit || undefined,
@@ -156,9 +156,10 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
 
 function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBreakdown {
   const breakdown: MatchBreakdown = {};
+  const weights = preferences.weights as any;
 
   // Price score
-  if (preferences.weights.price) {
+  if (weights?.price) {
     breakdown.price = calculatePriceScore(
       listing.price,
       preferences.budgetMin || undefined,
@@ -167,7 +168,7 @@ function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBr
   }
 
   // Transport score
-  if (preferences.weights.transport && preferences.commutePoints.length > 0) {
+  if (weights?.transport && preferences.commutePoints.length > 0) {
     breakdown.transport = calculateTransportScore(
       listing.lat,
       listing.lng,
@@ -177,42 +178,30 @@ function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBr
   }
 
   // Parking score
-  if (preferences.weights.parking) {
+  if (weights?.parking) {
     breakdown.parking = listing.hasParking ? 10 : 
                        preferences.parkingRequired ? 0 : 5;
   }
 
-  // Enrichment-based factors (schools, parks, metro)
-  try {
-    const { enrichmentService } = await import('../../api/src/services/enrichment.service');
-    const enriched = await enrichmentService.enrichListing(listing);
-    if (enriched) {
-      const partial = enrichmentService.computeBreakdownPart(enriched);
-      if (preferences.weights.schools && partial.schools !== undefined) breakdown.schools = partial.schools;
-      if (preferences.weights.parks && partial.parks !== undefined) breakdown.parks = partial.parks;
-      if (preferences.weights.metro && partial.metro !== undefined) breakdown.metro = partial.metro;
-    }
-  } catch {
-    // Fallback to mocks
-    if (preferences.weights.schools) breakdown.schools = 5 + Math.random() * 5;
-    if (preferences.weights.parks) breakdown.parks = 5 + Math.random() * 5;
-    if (preferences.weights.metro) breakdown.metro = 5 + Math.random() * 5;
-  }
+  // Enrichment-based factors (schools, parks, metro) — mocked in bot
+  if (weights?.schools) breakdown.schools = 5 + Math.random() * 5;
+  if (weights?.parks) breakdown.parks = 5 + Math.random() * 5;
+  if (weights?.metro) breakdown.metro = 5 + Math.random() * 5;
 
   // Still mock noise/ecology until implemented
-  if (preferences.weights.noise) {
+  if (weights?.noise) {
     breakdown.noise = 5 + Math.random() * 5;
   }
-  if (preferences.weights.ecology) {
+  if (weights?.ecology) {
     breakdown.ecology = 5 + Math.random() * 5;
   }
 
   // Investment factors
-  if (preferences.weights.liquidity) {
+  if (weights?.liquidity) {
     breakdown.liquidity = listing.isNewBuilding ? 8 : 6; // Simple heuristic
   }
 
-  if (preferences.weights.constructionStage && listing.stage) {
+  if (weights?.constructionStage && listing.stage) {
     const stageScores: Record<string, number> = {
       'котлован': 3,
       'фундамент': 4,
@@ -224,7 +213,7 @@ function calculateBreakdown(listing: Listing, preferences: Preferences): MatchBr
     breakdown.constructionStage = stageScores[listing.stage] || 5;
   }
 
-  if (preferences.weights.infrastructure) {
+  if (weights?.infrastructure) {
     breakdown.infrastructure = 5 + Math.random() * 5; // Mock
   }
 
@@ -281,7 +270,7 @@ async function generateExplanation(
   }
 }
 
-function getFactorDescription(factor: string, score: number, isPositive: boolean): string {
+function getFactorDescription(factor: string, _score: number, isPositive: boolean): string {
   const descriptions: Record<string, { positive: string; negative: string }> = {
     transport: {
       positive: 'отличная транспортная доступность',

@@ -1,9 +1,10 @@
-import { prisma } from '@real-estate-bot/database';
-import { ProviderFactory } from '@real-estate-bot/providers';
-import type { Subscription, User, Preferences, Listing } from '@real-estate-bot/shared';
+import { prisma, Subscription, User as DbUser } from '@real-estate-bot/database';
+import type { Listing, MatchResult } from '@real-estate-bot/shared';
 import { searchAndScoreListings } from './search.service';
 import { Bot } from 'grammy';
 import { formatPrice } from '@real-estate-bot/shared';
+
+type User = DbUser;
 
 export class MonitoringService {
   constructor(private bot: Bot) {}
@@ -27,7 +28,7 @@ export class MonitoringService {
 
     for (const subscription of activeSubscriptions) {
       try {
-        await this.checkSubscription(subscription);
+        await this.checkSubscription(subscription as any);
       } catch (error) {
         console.error(`Error checking subscription ${subscription.id}:`, error);
       }
@@ -43,22 +44,22 @@ export class MonitoringService {
       return;
     }
 
-    // Получаем последнюю проверку
-    const lastCheckKey = `last_check_${subscription.id}`;
     const lastCheck = subscription.lastChecked || new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     // Ищем новые объекты
-    const results = await searchAndScoreListings(preferences);
+    const results = await searchAndScoreListings(preferences as any);
 
     // Фильтруем только новые объекты с хорошим score
-    const newListings = results.filter(result => {
-      const createdAt = (result.listing as any).createdAt
-        ? new Date((result.listing as any).createdAt)
-        : new Date();
-      const isNew = createdAt > lastCheck;
-      const hasGoodScore = result.matchScore >= (subscription.minScore || 7.0);
-      return isNew && hasGoodScore;
-    });
+    const newListings = results
+      .filter((result: MatchResult) => {
+        const createdAt = (result.listing as any)?.createdAt
+          ? new Date((result.listing as any).createdAt)
+          : new Date();
+        const isNew = createdAt > lastCheck;
+        const hasGoodScore = result.matchScore >= (subscription.minScore || 7.0);
+        return isNew && hasGoodScore && !!result.listing;
+      })
+      .map(r => ({ listing: r.listing as Listing, matchScore: r.matchScore, explanation: r.explanation }));
 
     if (newListings.length > 0) {
       await this.sendNotifications(user, newListings, subscription);
@@ -85,7 +86,7 @@ export class MonitoringService {
     for (const { listing, matchScore, explanation } of topListings) {
       message += `🏠 <b>${listing.title}</b>\n`;
       message += `💰 ${formatPrice(listing.price)}\n`;
-      message += `📍 ${listing.district}`;
+      if (listing.district) message += `📍 ${listing.district}`;
       if (listing.metro) {
         message += ` • ${listing.metro}`;
       }
@@ -97,8 +98,8 @@ export class MonitoringService {
       message += `💡 ${shortExplanation}\n`;
       
       // Ссылка на объект
-      if (listing.url) {
-        message += `\n<a href="${listing.url}">Посмотреть объект</a>\n`;
+      if ((listing as any).url) {
+        message += `\n<a href="${(listing as any).url}">Посмотреть объект</a>\n`;
       }
       message += '\n---\n\n';
     }
@@ -110,9 +111,8 @@ export class MonitoringService {
     message += `\n<a href="${process.env.MINI_APP_URL}">Открыть все в Mini App</a>`;
 
     try {
-      await this.bot.api.sendMessage(user.tgId, message, {
+      await this.bot.api.sendMessage(user.tgId as any, message, {
         parse_mode: 'HTML',
-        disable_web_page_preview: true
       });
 
       // Сохраняем отправленные уведомления
@@ -123,7 +123,7 @@ export class MonitoringService {
             subscriptionId: subscription.id,
             listingId: listing.id,
             type: 'new_listing',
-            message: message.substring(0, 500), // Сохраняем первые 500 символов
+            message: message.substring(0, 500),
             sentAt: new Date()
           }
         });
@@ -203,7 +203,7 @@ export class MonitoringService {
       where: { userId }
     });
 
-    const byType = notifications.reduce((acc, notif) => {
+    const byType = notifications.reduce((acc: Record<string, number>, notif: any) => {
       acc[notif.type] = (acc[notif.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);

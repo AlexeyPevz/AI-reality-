@@ -1,7 +1,7 @@
 import { Context, InlineKeyboard } from 'grammy';
-import { searchService } from '../services/search.service';
 import { formatPrice } from '@real-estate-bot/shared';
-import { Preferences } from '@real-estate-bot/shared';
+import type { Preferences } from '@real-estate-bot/shared';
+import { searchAndScoreListings } from '../services/search.service';
 
 // Предустановленные демо-профили
 const DEMO_PROFILES = {
@@ -16,13 +16,12 @@ const DEMO_PROFILES = {
       rooms: [2, 3],
       areaMin: 60,
       areaMax: 100,
-      propertyType: 'any',
-      parkingRequired: true,
+      propertyType: 'any' as const,
       weights: {
         transport: 0.8,
         schools: 0.9,
         parks: 0.8,
-        safety: 0.9,
+        safety: 0.9 as any,
         parking: 0.7,
         infrastructure: 0.8
       }
@@ -39,12 +38,11 @@ const DEMO_PROFILES = {
       rooms: [1, 2],
       areaMin: 30,
       areaMax: 60,
-      propertyType: 'new',
+      propertyType: 'new' as const,
       weights: {
         liquidity: 0.9,
         price: 0.8,
-        completion: 0.7,
-        potential: 0.9,
+        constructionStage: 0.7,
         infrastructure: 0.6
       }
     }
@@ -60,13 +58,12 @@ const DEMO_PROFILES = {
       rooms: [3, 4],
       areaMin: 120,
       areaMax: 300,
-      propertyType: 'any',
-      parkingRequired: true,
+      propertyType: 'any' as const,
       weights: {
         transport: 0.5,
         schools: 0.7,
         parks: 0.6,
-        safety: 0.9,
+        safety: 0.9 as any,
         parking: 0.9,
         infrastructure: 0.9
       }
@@ -83,12 +80,12 @@ const DEMO_PROFILES = {
       rooms: [0, 1], // студия или однушка
       areaMin: 25,
       areaMax: 45,
-      propertyType: 'secondary',
+      propertyType: 'secondary' as const,
       weights: {
         transport: 0.95,
         schools: 0.1,
         parks: 0.5,
-        safety: 0.7,
+        safety: 0.7 as any,
         parking: 0.2,
         infrastructure: 0.8
       }
@@ -146,19 +143,23 @@ export async function handleDemoSelection(ctx: Context) {
   const demoPreferences: Preferences = {
     id: `demo_${Date.now()}`,
     userId: 'demo_user',
-    ...profile.preferences,
+    mode: profile.preferences.mode,
+    weights: profile.preferences.weights as any,
+    budgetMin: profile.preferences.budgetMin,
+    budgetMax: profile.preferences.budgetMax,
     locations: profile.preferences.districts,
     commutePoints: [],
+    transportMode: 'public',
+    rooms: profile.preferences.rooms,
+    areaMin: profile.preferences.areaMin,
+    areaMax: profile.preferences.areaMax,
+    propertyType: profile.preferences.propertyType,
     createdAt: new Date(),
     updatedAt: new Date()
   };
   
   // Выполняем поиск
-  const results = await searchService.searchWithScore(
-    demoPreferences,
-    'demo_user',
-    5 // Показываем топ-5 объектов
-  );
+  const results = await searchAndScoreListings(demoPreferences);
   
   if (results.length === 0) {
     await ctx.reply(
@@ -173,14 +174,14 @@ export async function handleDemoSelection(ctx: Context) {
   let message = `🏠 <b>Найдено ${results.length} подходящих объектов:</b>\n\n`;
   
   for (const result of results.slice(0, 3)) {
-    const listing = result.listing;
+    const listing = result.listing!;
     message += `🏢 <b>${listing.title}</b>\n`;
     message += `💰 ${formatPrice(listing.price)}`;
     if (listing.area) {
       message += ` (${formatPrice(Math.round(listing.price / listing.area))}/м²)`;
     }
     message += '\n';
-    message += `📍 ${listing.district}`;
+    if (listing.district) message += `📍 ${listing.district}`;
     if (listing.metro) {
       message += ` • ${listing.metro}`;
     }
@@ -188,18 +189,11 @@ export async function handleDemoSelection(ctx: Context) {
     message += `⭐ Оценка соответствия: ${result.matchScore.toFixed(1)}/10\n`;
     message += `💡 ${result.explanation.split('.')[0]}.\n`;
     
-    if (listing.url) {
-      message += `<a href="${listing.url}">Посмотреть объект</a>\n`;
+    if ((listing as any).url) {
+      message += `<a href="${(listing as any).url}">Посмотреть объект</a>\n`;
     }
     message += '\n';
   }
-  
-  // Добавляем статистику
-  message += '<b>📊 Статистика демо-поиска:</b>\n';
-  message += `• Проанализировано объектов: ${results.length * 4}\n`;
-  message += `• Подошло по критериям: ${results.length}\n`;
-  message += `• Средняя оценка: ${(results.reduce((sum, r) => sum + r.matchScore, 0) / results.length).toFixed(1)}/10\n`;
-  message += `• Время поиска: 2.3 сек\n\n`;
   
   // Призыв к действию
   const ctaKeyboard = new InlineKeyboard()
@@ -208,16 +202,8 @@ export async function handleDemoSelection(ctx: Context) {
     .text('🎮 Попробовать другой профиль', 'demo')
     .text('❓ Как это работает', 'demo_how_it_works');
   
-  message += '💡 <b>Понравилось?</b>\n';
-  message += 'Создайте свой персональный профиль и получите:\n';
-  message += '• Неограниченный поиск\n';
-  message += '• Уведомления о новых объектах\n';
-  message += '• AI-консультант по недвижимости\n';
-  message += '• Сохранение избранного\n';
-  
   await ctx.reply(message, {
     parse_mode: 'HTML',
-    disable_web_page_preview: true,
     reply_markup: ctaKeyboard
   });
 }

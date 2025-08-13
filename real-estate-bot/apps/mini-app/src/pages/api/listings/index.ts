@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Transform recommendations to listings with match scores
-    const listings = user.recommendations.map(rec => ({
+    const listings = (user.recommendations as any[]).map((rec: any) => ({
       ...rec.listing,
       matchScore: rec.score,
       matchExplanation: rec.explanation,

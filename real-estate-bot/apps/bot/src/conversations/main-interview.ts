@@ -131,7 +131,7 @@ export async function mainInterview(conversation: Conversation<BotContext>, ctx:
     if (commuteResponse.callbackQuery?.data !== 'skip' && commuteResponse.message?.text) {
       // For MVP, we'll store as text. In production, we'd geocode these
       const places = commuteResponse.message.text.split(',').map(p => p.trim());
-      ctx.session.commutePoints = places.map((place, i) => ({
+      ctx.session.commutePoints = places.map((place, _i) => ({
         name: place,
         lat: 55.7558 + (Math.random() - 0.5) * 0.1, // Mock coordinates
         lng: 37.6173 + (Math.random() - 0.5) * 0.1,
