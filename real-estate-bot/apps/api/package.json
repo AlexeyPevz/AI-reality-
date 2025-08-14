@@ -11,9 +11,9 @@
     "test": "jest"
   },
   "dependencies": {
-    "@real-estate-bot/shared": "workspace:*",
-    "@real-estate-bot/database": "workspace:*",
-    "@real-estate-bot/providers": "workspace:*",
+    "@real-estate-bot/shared": "file:../../packages/shared",
+    "@real-estate-bot/database": "file:../../packages/database",
+    "@real-estate-bot/providers": "file:../../packages/providers",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",

@@ -29,6 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           include: {
             listing: true
           }
+        },
+        preferences: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
         }
       }
     });
@@ -38,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Transform recommendations to listings with match scores
-    const listings = user.recommendations.map(rec => ({
+    const listings = (user.recommendations as any[]).map((rec: any) => ({
       ...rec.listing,
       matchScore: rec.score,
       matchExplanation: rec.explanation,
@@ -60,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user: {
         id: user.id,
         name: user.firstName,
-        preferences: user.preferences?.[0]
+        preferences: (user as any).preferences?.[0]
       }
     });
   } catch (error) {

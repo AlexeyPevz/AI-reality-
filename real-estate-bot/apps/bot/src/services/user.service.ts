@@ -20,7 +20,7 @@ export class UserService {
   static async updateUser(userId: string, data: Partial<Omit<User, 'id' | 'tgId' | 'createdAt' | 'updatedAt'>>): Promise<User> {
     return await prisma.user.update({
       where: { id: userId },
-      data,
+      data: data as any,
     });
   }
 

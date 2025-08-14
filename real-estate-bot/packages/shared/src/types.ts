@@ -1,4 +1,5 @@
 // User types
+export type DealType = 'sale' | 'rent';
 export interface User {
   id: string;
   tgId: number;
@@ -109,6 +110,7 @@ export interface Listing {
   year?: number;
   stage?: string;
   photos: string[];
+  images?: string[];
   provider: string;
   partnerDeeplinkTemplate?: string;
   description?: string;
@@ -117,6 +119,18 @@ export interface Listing {
   developer?: string;
   dealType?: DealType;
   propertyType?: 'new' | 'secondary';
+  // DB/derived fields used in Mini App and notifications
+  district?: string;
+  metro?: string;
+  metroDistance?: { minutes: number; transport: string };
+  features?: string[];
+  floors?: number;
+  url?: string;
+  source?: string;
+  publishedAt?: Date;
+  matchScore?: number;
+  matchExplanation?: string;
+  partnerData?: Record<string, any>;
   // Rent-specific attributes
   rentDeposit?: number;
   rentPeriod?: 'short' | 'long';

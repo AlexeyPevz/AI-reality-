@@ -92,12 +92,12 @@ class AnalyticsService {
 
     // Count clicks
     const clicksToday = await prisma.click.count({
-      where: { createdAt: { gte: oneDayAgo } },
+      where: { timestamp: { gte: oneDayAgo } },
     });
 
     // Average match score
-    const avgMatchScore = await prisma.recommendation.aggregate({
-      _avg: { matchScore: true },
+    const avgScore = await prisma.recommendation.aggregate({
+      _avg: { score: true },
       where: { createdAt: { gte: oneWeekAgo } },
     });
 
@@ -110,7 +110,7 @@ class AnalyticsService {
       engagement: {
         searchesToday,
         clicksToday,
-        avgMatchScore: avgMatchScore._avg.matchScore || 0,
+        avgMatchScore: avgScore._avg.score || 0,
       },
       retention: {
         d1: this.calculateRetention(1),

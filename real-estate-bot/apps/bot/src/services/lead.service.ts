@@ -1,5 +1,5 @@
 import { prisma } from '@real-estate-bot/database';
-import { Lead, LeadQuality, LeadStatus, User, Preferences } from '@real-estate-bot/shared';
+import { Lead, LeadQuality, LeadStatus } from '@real-estate-bot/shared';
 
 export class LeadService {
   // Создание или обновление лида
@@ -225,25 +225,6 @@ export class LeadService {
     // });
   }
 
-  // Очистка персональных данных перед отправкой
-  private sanitizeLead(lead: Lead): Partial<Lead> {
-    return {
-      id: lead.id,
-      quality: lead.quality,
-      score: lead.score,
-      budget: lead.budget,
-      locations: lead.locations,
-      rooms: lead.rooms,
-      area: lead.area,
-      type: lead.type,
-      purpose: lead.purpose,
-      // Контакты передаем только если покупатель оплатил
-      phone: lead.phone,
-      name: lead.name,
-      telegramUsername: lead.telegramUsername
-    };
-  }
-
   // CRUD операции
   private async createLead(data: Partial<Lead>): Promise<Lead> {
     // В реальной БД создаем запись
@@ -258,11 +239,11 @@ export class LeadService {
             createdAt: new Date(),
             updatedAt: new Date()
           }
-        }
+        } as any
       }
     });
 
-    return user.meta?.lead as Lead;
+    return (user.meta as any)?.lead as Lead;
   }
 
   private async updateLead(leadId: string, data: Partial<Lead>): Promise<Lead> {
@@ -272,7 +253,7 @@ export class LeadService {
         meta: {
           path: ['lead', 'id'],
           equals: leadId
-        }
+        } as any
       }
     });
 
@@ -283,15 +264,15 @@ export class LeadService {
       data: {
         meta: {
           lead: {
-            ...users[0].meta?.lead,
+            ...((users[0].meta as any)?.lead),
             ...data,
             updatedAt: new Date()
           }
-        }
+        } as any
       }
     });
 
-    return user.meta?.lead as Lead;
+    return (user.meta as any)?.lead as Lead;
   }
 
   private async getLead(leadId: string): Promise<Lead | null> {
@@ -300,11 +281,11 @@ export class LeadService {
         meta: {
           path: ['lead', 'id'],
           equals: leadId
-        }
+        } as any
       }
     });
 
-    return users.length > 0 ? users[0].meta?.lead as Lead : null;
+    return users.length > 0 ? (users[0].meta as any)?.lead as Lead : null;
   }
 
   private async findLeadByUserId(userId: string): Promise<Lead | null> {
@@ -312,7 +293,7 @@ export class LeadService {
       where: { id: userId }
     });
 
-    return user?.meta?.lead as Lead || null;
+    return (user?.meta as any)?.lead as Lead || null;
   }
 
   // Статистика по лидам
@@ -328,14 +309,14 @@ export class LeadService {
         meta: {
           path: ['lead'],
           not: null
-        }
+        } as any
       }
     });
 
     const stats = {
       total: 0,
-      byQuality: { hot: 0, warm: 0, cold: 0 },
-      byStatus: { new: 0, qualified: 0, contacted: 0, sold: 0, rejected: 0 },
+      byQuality: { hot: 0, warm: 0, cold: 0 } as Record<LeadQuality, number>,
+      byStatus: { new: 0, qualified: 0, contacted: 0, sold: 0, rejected: 0 } as Record<LeadStatus, number>,
       totalRevenue: 0,
       avgLeadPrice: 0
     };
@@ -343,7 +324,7 @@ export class LeadService {
     let soldCount = 0;
 
     for (const user of users) {
-      const lead = user.meta?.lead as Lead;
+      const lead = (user.meta as any)?.lead as Lead;
       if (!lead) continue;
 
       stats.total++;

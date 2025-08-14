@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",
-    "@real-estate-bot/shared": "workspace:*",
+    "@real-estate-bot/shared": "file:../shared",
     "pgvector": "^0.1.8"
   },
   "devDependencies": {

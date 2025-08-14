@@ -7,9 +7,9 @@ interface YandexConfig {
 }
 
 export class YandexSourceProvider extends BaseListingsProvider {
-  constructor(private cfg: YandexConfig) {
-    super('yandex_source', cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
-    this.client.defaults.headers['Authorization'] = `Bearer ${cfg.apiKey}`;
+  constructor(_cfg: YandexConfig) {
+    super('yandex_source', _cfg.baseURL, ['rooms', 'price', 'area', 'propertyType', 'dealType']);
+    this.client.defaults.headers['Authorization'] = `Bearer ${_cfg.apiKey}`;
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {
@@ -64,7 +64,7 @@ export class YandexSourceProvider extends BaseListingsProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const { ensureListingShape } = require('../../apps/api/src/services/provider-mapping.guard');
+    const { ensureListingShape } = require('@real-estate-bot/shared');
     return ensureListingShape(l, 'yandex_source');
   }
 }

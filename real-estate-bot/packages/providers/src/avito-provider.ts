@@ -1,4 +1,4 @@
-import { ListingsProvider, QueryDTO, Listing } from '@real-estate-bot/shared';
+import { QueryDTO, Listing } from '@real-estate-bot/shared';
 import { BaseListingsProvider } from './base';
 
 interface AvitoConfig {
@@ -7,9 +7,9 @@ interface AvitoConfig {
 }
 
 export class AvitoProvider extends BaseListingsProvider {
-  constructor(private cfg: AvitoConfig) {
-    super('avito', cfg.baseURL, ['rooms', 'price', 'area', 'newBuilding', 'parking', 'propertyType', 'dealType']);
-    this.client.defaults.headers['Authorization'] = `Bearer ${cfg.apiKey}`;
+  constructor(_cfg: AvitoConfig) {
+    super('avito', _cfg.baseURL, ['rooms', 'price', 'area', 'newBuilding', 'parking', 'propertyType', 'dealType']);
+    this.client.defaults.headers['Authorization'] = `Bearer ${_cfg.apiKey}`;
   }
 
   async searchListings(query: QueryDTO): Promise<Listing[]> {
@@ -70,7 +70,7 @@ export class AvitoProvider extends BaseListingsProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    const { ensureListingShape } = require('../../apps/api/src/services/provider-mapping.guard');
+    const { ensureListingShape } = require('@real-estate-bot/shared');
     return ensureListingShape(l, 'avito');
   }
 }

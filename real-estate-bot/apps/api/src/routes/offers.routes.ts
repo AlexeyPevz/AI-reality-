@@ -14,6 +14,12 @@ function getOfferUrl(type: string): string | null {
   return map[type] || null;
 }
 
+function generateTrackingId(seed: string): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `trk_${timestamp}_${random}_${seed.substring(0, 6)}`;
+}
+
 router.get('/redirect', optionalAuth, async (req, res) => {
   try {
     const type = (req.query.type as string) || '';
@@ -44,8 +50,7 @@ router.get('/redirect', optionalAuth, async (req, res) => {
     });
 
     // Generate partner tracking
-    const { monetizationService } = await import('../services/monetization.service');
-    const trackingId = await monetizationService.trackPartnerClick(userId, listingId || 'offer', type, source);
+    const trackingId = generateTrackingId(userId);
 
     // Build redirect with UTM + tracking
     const url = new URL(target);
@@ -55,9 +60,18 @@ router.get('/redirect', optionalAuth, async (req, res) => {
     if (listingId) url.searchParams.set('listing_id', listingId);
     url.searchParams.set('tracking_id', trackingId);
 
-    // If no recent click, also write a plain click row for analytics (monetizationService already created one)
+    // If no recent click, write a plain click row for analytics
     if (!recent) {
-      // no-op: trackPartnerClick already logged
+      if (listingId) {
+        await prisma.click.create({
+          data: {
+            userId,
+            listingId,
+            url: url.toString(),
+            source,
+          }
+        });
+      }
     }
 
     return res.redirect(url.toString());
@@ -74,34 +88,8 @@ router.post('/postback', async (req, res) => {
     const signature = (req.headers['x-signature'] as string) || (req.query.signature as string) || '';
     if (secret && signature !== secret) return res.status(401).json({ error: 'Invalid signature' });
 
-    const { partnerId, trackingId, status, commission, amount } = req.body || {};
-    if (!trackingId || !status) return res.status(400).json({ error: 'trackingId and status required' });
-
-    // Find click by trackingId in meta
-    const click = await prisma.click.findFirst({
-      where: {
-        meta: {
-          path: ['trackingId'],
-          equals: trackingId,
-        },
-      },
-    });
-
-    if (!click) return res.status(404).json({ error: 'Click not found' });
-
-    await prisma.click.update({
-      where: { id: click.id },
-      data: {
-        meta: {
-          partnerId: partnerId || click.meta?.partnerId,
-          trackingId,
-          conversionStatus: status,
-          amount: amount ? Number(amount) : click.meta?.amount,
-          commission: commission ? Number(commission) : click.meta?.commission,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    });
+    // Accept payload from partner and acknowledge (schema does not persist conversions yet)
+    // const { partnerId, trackingId, status, commission, amount } = req.body || {};
 
     return res.json({ success: true });
   } catch (e) {

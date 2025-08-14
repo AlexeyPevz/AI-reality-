@@ -1,4 +1,4 @@
-import { Lead, LeadBuyer, LeadQuality } from '@real-estate-bot/shared';
+import { Lead, LeadBuyer } from '@real-estate-bot/shared';
 import { leadService } from './lead.service';
 import { ProviderFactory } from '@real-estate-bot/providers';
 import axios from 'axios';
@@ -90,10 +90,10 @@ export class LeadDistributionService {
     
     let totalRevenue = 0;
     
-    // Получаем все All-in-One провайдеры
-    const providers = ProviderFactory.getAllInOneProviders();
+    // Получаем всех провайдеров и фильтруем тех, у кого есть submitLead
+    const providers = ProviderFactory.getAll().filter((p: any) => typeof p.submitLead === 'function');
     
-    for (const provider of providers) {
+    for (const provider of providers as any[]) {
       try {
         const response = await provider.submitLead(lead);
         
@@ -187,7 +187,7 @@ export class LeadDistributionService {
       if (!buyer.active) return false;
 
       // Проверяем качество
-      const qualityScore = { hot: 3, warm: 2, cold: 1 };
+      const qualityScore = { hot: 3, warm: 2, cold: 1 } as const;
       const minQualityScore = qualityScore[buyer.minQuality || 'cold'];
       const leadQualityScore = qualityScore[lead.quality];
       if (leadQualityScore < minQualityScore) return false;

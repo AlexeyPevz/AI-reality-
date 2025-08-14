@@ -10,7 +10,8 @@ router.post('/', authenticateTelegram, async (req, res) => {
     const { preferencesId } = req.body;
 
     if (!preferencesId) {
-      return res.status(400).json({ error: 'preferencesId is required' });
+      res.status(400).json({ error: 'preferencesId is required' });
+      return;
     }
 
     const results = await searchByPreferences(preferencesId);

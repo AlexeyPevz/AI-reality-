@@ -1,9 +1,10 @@
-import { Context } from 'grammy';
 import { InlineKeyboard } from 'grammy';
 import { documentService } from '../services/document.service';
 import { ragService } from '../services/rag.service';
+import type { BotContext } from '../types';
+import { prisma } from '@real-estate-bot/database';
 
-export async function knowledgeCommand(ctx: Context) {
+export async function knowledgeCommand(ctx: BotContext) {
   const keyboard = new InlineKeyboard()
     .text('📚 Все документы', 'kb_list')
     .text('➕ Добавить FAQ', 'kb_add_faq')
@@ -21,7 +22,7 @@ export async function knowledgeCommand(ctx: Context) {
   );
 }
 
-export async function handleKnowledgeCallback(ctx: Context) {
+export async function handleKnowledgeCallback(ctx: BotContext) {
   const data = ctx.callbackQuery?.data;
   
   switch (data) {
@@ -30,22 +31,22 @@ export async function handleKnowledgeCallback(ctx: Context) {
       break;
     case 'kb_add_faq':
       await ctx.reply('Отправьте FAQ в формате:\n\nВопрос: Ваш вопрос?\nОтвет: Ваш ответ');
-      ctx.session.waitingFor = 'faq_input';
+      (ctx.session as any).waitingFor = 'faq_input';
       break;
     case 'kb_add_url':
       await ctx.reply('Отправьте URL статьи или документа:');
-      ctx.session.waitingFor = 'url_input';
+      (ctx.session as any).waitingFor = 'url_input';
       break;
     case 'kb_test':
       await ctx.reply('Задайте вопрос для поиска в базе знаний:');
-      ctx.session.waitingFor = 'kb_query';
+      (ctx.session as any).waitingFor = 'kb_query';
       break;
   }
   
   await ctx.answerCallbackQuery();
 }
 
-async function listDocuments(ctx: Context) {
+async function listDocuments(ctx: BotContext) {
   const docs = await documentService.getDocuments();
   
   if (docs.length === 0) {
@@ -70,8 +71,8 @@ async function listDocuments(ctx: Context) {
 }
 
 // Handle text input for knowledge base
-export async function handleKnowledgeInput(ctx: Context) {
-  const waitingFor = ctx.session.waitingFor;
+export async function handleKnowledgeInput(ctx: BotContext) {
+  const waitingFor = (ctx.session as any).waitingFor;
   const text = ctx.message?.text;
   
   if (!waitingFor || !text) return false;
@@ -90,11 +91,11 @@ export async function handleKnowledgeInput(ctx: Context) {
       return false;
   }
   
-  ctx.session.waitingFor = undefined;
+  (ctx.session as any).waitingFor = undefined;
   return true;
 }
 
-async function handleFAQInput(ctx: Context, text: string) {
+async function handleFAQInput(ctx: BotContext, text: string) {
   const match = text.match(/Вопрос:\s*(.+?)\nОтвет:\s*(.+)/s);
   
   if (!match) {
@@ -113,7 +114,7 @@ async function handleFAQInput(ctx: Context, text: string) {
   }
 }
 
-async function handleURLInput(ctx: Context, url: string) {
+async function handleURLInput(ctx: BotContext, url: string) {
   if (!url.startsWith('http')) {
     await ctx.reply('❌ Пожалуйста, отправьте корректный URL');
     return;
@@ -143,7 +144,7 @@ async function handleURLInput(ctx: Context, url: string) {
   }
 }
 
-async function handleKBQuery(ctx: Context, query: string) {
+async function handleKBQuery(ctx: BotContext, query: string) {
   await ctx.reply('🔍 Ищу в базе знаний...');
   
   try {
@@ -180,6 +181,3 @@ async function handleKBQuery(ctx: Context, query: string) {
     console.error('KB query error:', error);
   }
 }
-
-// Import prisma
-import { prisma } from '@real-estate-bot/database';

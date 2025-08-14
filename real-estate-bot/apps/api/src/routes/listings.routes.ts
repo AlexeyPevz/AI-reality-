@@ -12,7 +12,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
     });
 
     if (!listing) {
-      return res.status(404).json({ error: 'Listing not found' });
+      res.status(404).json({ error: 'Listing not found' });
+      return;
     }
 
     // Map DB listing to shared Listing type shape

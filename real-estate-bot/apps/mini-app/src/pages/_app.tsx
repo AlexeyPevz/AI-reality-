@@ -2,12 +2,13 @@ import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import { useEffect } from 'react';
 import Script from 'next/script';
+import { SDKProvider } from '@tma.js/sdk-react';
 
 export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     // Initialize Telegram Web App
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
       tg.ready();
       tg.expand();
       
@@ -28,7 +29,9 @@ export default function App({ Component, pageProps }: AppProps) {
         src="https://telegram.org/js/telegram-web-app.js"
         strategy="beforeInteractive"
       />
-      <Component {...pageProps} />
+      <SDKProvider>
+        <Component {...pageProps} />
+      </SDKProvider>
     </>
   );
 }

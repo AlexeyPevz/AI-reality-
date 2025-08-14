@@ -417,9 +417,9 @@ export function selectOptimalModel(criteria: ModelSelectionCriteria): LLMModel {
   );
 
   // Filter by cost if specified
-  if (criteria.maxCost) {
+  if (criteria.maxCost !== undefined) {
     candidates = candidates.filter(m => 
-      (m.inputCost + m.outputCost) / 2 <= criteria.maxCost
+      (m.inputCost + m.outputCost) / 2 <= (criteria.maxCost as number)
     );
   }
 

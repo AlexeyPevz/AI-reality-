@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 
 export function useTelegram() {
-  const [webApp, setWebApp] = useState<typeof window.Telegram.WebApp | null>(null);
+  const [webApp, setWebApp] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
+    if (typeof window !== 'undefined' && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
       setWebApp(tg);
       
       // Get user data
@@ -46,7 +46,7 @@ export function useTelegram() {
   const openLink = (url: string) => {
     if (webApp) {
       webApp.openLink(url);
-    } else {
+    } else if (typeof window !== 'undefined') {
       window.open(url, '_blank');
     }
   };

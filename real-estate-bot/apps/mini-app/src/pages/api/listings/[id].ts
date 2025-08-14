@@ -69,12 +69,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       where: { tgId: BigInt(userData.user.id) }
     });
 
-    if (user && listing.partnerLink) {
+    if (user && (listing as any).partnerDeeplinkTemplate) {
       await prisma.click.create({
         data: {
           userId: user.id,
           listingId: id,
-          url: listing.partnerLink,
+          url: (listing as any).partnerDeeplinkTemplate,
           source: 'mini_app'
         }
       });

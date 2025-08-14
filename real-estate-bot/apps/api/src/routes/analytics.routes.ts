@@ -11,10 +11,11 @@ router.post('/click', authenticateTelegram, async (req, res) => {
     const { listingId } = req.body;
 
     if (!listingId) {
-      return res.status(400).json({ error: 'listingId is required' });
+      res.status(400).json({ error: 'listingId is required' });
+      return;
     }
 
-    // Get or create session ID
+    // Get or create session ID (kept for client, but not persisted in Click)
     const sessionId = req.headers['x-session-id'] as string || generateSessionId();
 
     // Create click record
@@ -22,10 +23,8 @@ router.post('/click', authenticateTelegram, async (req, res) => {
       data: {
         userId: req.userId!,
         listingId,
-        sessionId,
-        utmSource: req.query.utm_source as string,
-        utmMedium: req.query.utm_medium as string,
-        utmCampaign: req.query.utm_campaign as string,
+        url: `/listing/${listingId}`,
+        source: 'api',
       },
     });
 
@@ -34,6 +33,7 @@ router.post('/click', authenticateTelegram, async (req, res) => {
       sessionId,
       clickId: click.id,
     });
+    return;
   } catch (error) {
     console.error('Error tracking click:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -61,7 +61,8 @@ router.get('/metrics', authenticateTelegram, async (req, res) => {
     const newUsers24h = await prisma.user.count({ where: { createdAt: { gte: last24h } } });
 
     if (!(req as any).isAdmin) {
-      return res.status(403).json({ error: 'Forbidden' });
+      res.status(403).json({ error: 'Forbidden' });
+      return;
     }
 
     res.json({
@@ -69,6 +70,7 @@ router.get('/metrics', authenticateTelegram, async (req, res) => {
       newUsers24h,
       topRecommendations: topListings,
     });
+    return;
   } catch (e) {
     res.status(500).json({ error: 'Internal server error' });
   }

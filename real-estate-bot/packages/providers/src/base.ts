@@ -1,5 +1,5 @@
 import { ListingsProvider, QueryDTO, Listing } from '@real-estate-bot/shared';
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 export abstract class BaseListingsProvider implements ListingsProvider {
   protected client: AxiosInstance;
@@ -28,6 +28,10 @@ export abstract class BaseListingsProvider implements ListingsProvider {
     return this.linkTemplate
       .replace('{id}', listing.id)
       .replace('{provider}', this.name);
+  }
+
+  protected async makeRequest<T = any>(url: string, config: AxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
+    return this.client.request<T>({ url, ...config });
   }
 
   protected normalizePrice(price: any): number {

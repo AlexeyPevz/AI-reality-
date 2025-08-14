@@ -1,5 +1,5 @@
 import { BaseListingsProvider } from './base';
-import { Listing, QueryDTO } from '@real-estate-bot/shared';
+import { Listing } from '@real-estate-bot/shared';
 import { createHash } from 'crypto';
 
 export interface PartnerConfig {
@@ -29,85 +29,39 @@ export abstract class PartnerListingsProvider extends BaseListingsProvider {
     this.config = config;
   }
 
-  // Генерация партнерской ссылки
   protected generatePartnerLink(listing: Listing, userId?: string): string {
     const trackingId = this.generateTrackingId(listing.id, userId);
-    
-    const baseUrl = listing.url || `${this.config.baseUrl}/property/${listing.id}`;
+    const baseUrl = (listing as any).url || `${this.config.baseUrl}/property/${listing.id}`;
     const url = new URL(baseUrl);
-    
-    // Добавляем партнерские параметры
     url.searchParams.set('partner_id', this.config.partnerId);
     url.searchParams.set('tracking_id', trackingId);
-    
-    // UTM метки для отслеживания
     url.searchParams.set('utm_source', 'realestate_bot');
     url.searchParams.set('utm_medium', 'telegram');
-    url.searchParams.set('utm_campaign', listing.type || 'general');
+    url.searchParams.set('utm_campaign', 'listing');
     url.searchParams.set('utm_content', listing.id);
-    
-    if (userId) {
-      url.searchParams.set('utm_term', this.hashUserId(userId));
-    }
-
+    if (userId) url.searchParams.set('utm_term', this.hashUserId(userId));
     return url.toString();
   }
 
-  // Генерация уникального ID для трекинга
   private generateTrackingId(listingId: string, userId?: string): string {
     const timestamp = Date.now();
     const data = `${this.config.partnerId}-${listingId}-${userId || 'anonymous'}-${timestamp}`;
     return createHash('sha256').update(data).digest('hex').substring(0, 16);
   }
 
-  // Хеширование userId для приватности
   private hashUserId(userId: string): string {
     return createHash('sha256')
-      .update(userId + this.config.secretKey)
+      .update(userId + (this.config.secretKey || ''))
       .digest('hex')
       .substring(0, 8);
   }
 
-  // Обогащение листинга партнерскими данными
   protected enrichListingWithPartnerData(listing: Listing, userId?: string): Listing {
+    const partnerLink = this.generatePartnerLink(listing, userId);
     return {
       ...listing,
-      partnerLink: this.generatePartnerLink(listing, userId),
-      source: this.name,
-      partnerId: this.config.partnerId,
-      // Потенциальная комиссия
-      potentialCommission: this.config.commissionRate 
-        ? listing.price * (this.config.commissionRate / 100)
-        : undefined
+      partnerDeeplinkTemplate: partnerLink,
+      provider: this.name,
     };
-  }
-
-  // Трекинг клика по объявлению
-  async trackClick(listingId: string, userId: string): Promise<void> {
-    // Здесь можно отправить событие в партнерскую систему
-    try {
-      await this.client.post('/tracking/click', {
-        partner_id: this.config.partnerId,
-        listing_id: listingId,
-        user_hash: this.hashUserId(userId),
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Failed to track click:', error);
-    }
-  }
-
-  // Проверка статуса конверсии
-  async checkConversionStatus(trackingId: string): Promise<{
-    status: 'pending' | 'approved' | 'rejected';
-    amount?: number;
-    date?: Date;
-  }> {
-    try {
-      const response = await this.client.get(`/tracking/conversion/${trackingId}`);
-      return response.data;
-    } catch (error) {
-      return { status: 'pending' };
-    }
   }
 }

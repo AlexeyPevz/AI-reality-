@@ -12,7 +12,7 @@ export async function aiInterview(conversation: Conversation<BotContext>, ctx: B
   
   // Track interview start
   const { analytics } = await import('../services/analytics.service');
-  analytics.trackInterviewStarted(ctx.session.userId!, 'ai');
+  analytics.trackInterviewStarted(ctx.session.userId!, 'detailed');
 
   // Initial greeting from AI
   const initialContext: ConversationContext = {
@@ -138,7 +138,7 @@ export async function aiInterview(conversation: Conversation<BotContext>, ctx: B
 
   // Track completion
   const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
-  analytics.trackInterviewCompleted(ctx.session.userId!, 'ai', durationSeconds);
+  analytics.trackInterviewCompleted(ctx.session.userId!, 'detailed', durationSeconds);
 
   // Trigger search
   ctx.session.currentState = 'search_pending';
