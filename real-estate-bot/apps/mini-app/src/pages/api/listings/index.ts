@@ -29,6 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           include: {
             listing: true
           }
+        },
+        preferences: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
         }
       }
     });
@@ -60,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user: {
         id: user.id,
         name: user.firstName,
-        preferences: user.preferences?.[0]
+        preferences: (user as any).preferences?.[0]
       }
     });
   } catch (error) {

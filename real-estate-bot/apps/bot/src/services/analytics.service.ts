@@ -92,7 +92,7 @@ class AnalyticsService {
 
     // Count clicks
     const clicksToday = await prisma.click.count({
-      where: { createdAt: { gte: oneDayAgo } },
+      where: { timestamp: { gte: oneDayAgo } },
     });
 
     // Average match score

@@ -239,7 +239,7 @@ export class LeadService {
             createdAt: new Date(),
             updatedAt: new Date()
           }
-        }
+        } as any
       }
     });
 
@@ -253,7 +253,7 @@ export class LeadService {
         meta: {
           path: ['lead', 'id'],
           equals: leadId
-        }
+        } as any
       }
     });
 
@@ -268,7 +268,7 @@ export class LeadService {
             ...data,
             updatedAt: new Date()
           }
-        }
+        } as any
       }
     });
 
@@ -281,7 +281,7 @@ export class LeadService {
         meta: {
           path: ['lead', 'id'],
           equals: leadId
-        }
+        } as any
       }
     });
 
@@ -309,7 +309,7 @@ export class LeadService {
         meta: {
           path: ['lead'],
           not: null
-        }
+        } as any
       }
     });
 
@@ -324,7 +324,7 @@ export class LeadService {
     let soldCount = 0;
 
     for (const user of users) {
-      const lead = user.meta?.lead as Lead;
+      const lead = (user.meta as any)?.lead as Lead;
       if (!lead) continue;
 
       stats.total++;
