@@ -62,14 +62,16 @@ router.get('/redirect', optionalAuth, async (req, res) => {
 
     // If no recent click, write a plain click row for analytics
     if (!recent) {
-      await prisma.click.create({
-        data: {
-          userId,
-          listingId: listingId || undefined,
-          url: url.toString(),
-          source,
-        }
-      });
+      if (listingId) {
+        await prisma.click.create({
+          data: {
+            userId,
+            listingId,
+            url: url.toString(),
+            source,
+          }
+        });
+      }
     }
 
     return res.redirect(url.toString());
@@ -86,34 +88,8 @@ router.post('/postback', async (req, res) => {
     const signature = (req.headers['x-signature'] as string) || (req.query.signature as string) || '';
     if (secret && signature !== secret) return res.status(401).json({ error: 'Invalid signature' });
 
-    const { partnerId, trackingId, status, commission, amount } = req.body || {};
-    if (!trackingId || !status) return res.status(400).json({ error: 'trackingId and status required' });
-
-    // Find click by trackingId in meta
-    const click = await prisma.click.findFirst({
-      where: {
-        meta: {
-          path: ['trackingId'],
-          equals: trackingId,
-        },
-      },
-    });
-
-    if (!click) return res.status(404).json({ error: 'Click not found' });
-
-    await prisma.click.update({
-      where: { id: click.id },
-      data: {
-        meta: {
-          partnerId: partnerId || click.meta?.partnerId,
-          trackingId,
-          conversionStatus: status,
-          amount: amount ? Number(amount) : click.meta?.amount,
-          commission: commission ? Number(commission) : click.meta?.commission,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    });
+    // Accept payload from partner and acknowledge (schema does not persist conversions yet)
+    // const { partnerId, trackingId, status, commission, amount } = req.body || {};
 
     return res.json({ success: true });
   } catch (e) {

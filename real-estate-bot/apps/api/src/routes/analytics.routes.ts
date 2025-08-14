@@ -15,7 +15,7 @@ router.post('/click', authenticateTelegram, async (req, res) => {
       return;
     }
 
-    // Get or create session ID
+    // Get or create session ID (kept for client, but not persisted in Click)
     const sessionId = req.headers['x-session-id'] as string || generateSessionId();
 
     // Create click record
@@ -23,10 +23,8 @@ router.post('/click', authenticateTelegram, async (req, res) => {
       data: {
         userId: req.userId!,
         listingId,
-        sessionId,
-        utmSource: req.query.utm_source as string,
-        utmMedium: req.query.utm_medium as string,
-        utmCampaign: req.query.utm_campaign as string,
+        url: `/listing/${listingId}`,
+        source: 'api',
       },
     });
 

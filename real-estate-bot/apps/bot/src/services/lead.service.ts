@@ -243,7 +243,7 @@ export class LeadService {
       }
     });
 
-    return user.meta?.lead as Lead;
+    return (user.meta as any)?.lead as Lead;
   }
 
   private async updateLead(leadId: string, data: Partial<Lead>): Promise<Lead> {
@@ -264,7 +264,7 @@ export class LeadService {
       data: {
         meta: {
           lead: {
-            ...users[0].meta?.lead,
+            ...((users[0].meta as any)?.lead),
             ...data,
             updatedAt: new Date()
           }
@@ -272,7 +272,7 @@ export class LeadService {
       }
     });
 
-    return user.meta?.lead as Lead;
+    return (user.meta as any)?.lead as Lead;
   }
 
   private async getLead(leadId: string): Promise<Lead | null> {
@@ -285,7 +285,7 @@ export class LeadService {
       }
     });
 
-    return users.length > 0 ? users[0].meta?.lead as Lead : null;
+    return users.length > 0 ? (users[0].meta as any)?.lead as Lead : null;
   }
 
   private async findLeadByUserId(userId: string): Promise<Lead | null> {
@@ -293,7 +293,7 @@ export class LeadService {
       where: { id: userId }
     });
 
-    return user?.meta?.lead as Lead || null;
+    return (user?.meta as any)?.lead as Lead || null;
   }
 
   // Статистика по лидам
