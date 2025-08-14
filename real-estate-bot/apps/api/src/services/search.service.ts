@@ -11,6 +11,19 @@ import {
 } from '@real-estate-bot/shared';
 import { ProviderFactory } from '@real-estate-bot/providers';
 
+// Lazy import enrichment to avoid circular deps on build
+let enrichmentService: undefined | {
+  enrichListing: (l: Listing) => Promise<any>;
+  computeBreakdownPart: (enriched: any) => Partial<MatchBreakdown>;
+};
+(async () => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = await import('./enrichment.service');
+    enrichmentService = mod.enrichmentService;
+  } catch {}
+})();
+
 export async function searchByPreferences(preferencesId: string): Promise<MatchResult[]> {
   // Load preferences
   const preferences = await prisma.preferences.findUnique({
@@ -74,7 +87,7 @@ export async function searchAndScoreListings(preferences: any): Promise<MatchRes
   const results: MatchResult[] = [];
   
   for (const listing of cachedListings) {
-    const breakdown = calculateBreakdown(listing, preferences as any);
+    const breakdown = await calculateBreakdown(listing, preferences as any);
     const matchScore = calculateWeightedScore((preferences.weights || {}) as any, breakdown);
     const explanation = await generateExplanation(listing, breakdown, preferences as any);
 
@@ -153,7 +166,7 @@ async function cacheListings(listings: Listing[], provider: string): Promise<Lis
   return cached;
 }
 
-function calculateBreakdown(listing: Listing, preferences: any): MatchBreakdown {
+async function calculateBreakdown(listing: Listing, preferences: any): Promise<MatchBreakdown> {
   const breakdown: MatchBreakdown = {};
   const weights = (preferences.weights || {}) as any;
 
@@ -183,10 +196,23 @@ function calculateBreakdown(listing: Listing, preferences: any): MatchBreakdown 
   }
 
   // Enrichment-based factors (schools, parks, metro)
-  // Disable enrichment in API build for now to simplify
-  if (weights.schools) breakdown.schools = 5 + Math.random() * 5;
-  if (weights.parks) breakdown.parks = 5 + Math.random() * 5;
-  if (weights.metro) breakdown.metro = 5 + Math.random() * 5;
+  if (enrichmentService) {
+    try {
+      const enriched = await enrichmentService.enrichListing(listing);
+      const partial = enrichmentService.computeBreakdownPart(enriched);
+      if (weights.schools && partial.schools !== undefined) breakdown.schools = partial.schools;
+      if (weights.parks && partial.parks !== undefined) breakdown.parks = partial.parks;
+      if (weights.metro && partial.metro !== undefined) breakdown.metro = partial.metro;
+    } catch {
+      if (weights.schools) breakdown.schools = 5 + Math.random() * 5;
+      if (weights.parks) breakdown.parks = 5 + Math.random() * 5;
+      if (weights.metro) breakdown.metro = 5 + Math.random() * 5;
+    }
+  } else {
+    if (weights.schools) breakdown.schools = 5 + Math.random() * 5;
+    if (weights.parks) breakdown.parks = 5 + Math.random() * 5;
+    if (weights.metro) breakdown.metro = 5 + Math.random() * 5;
+  }
 
   // Still mock noise/ecology until implemented
   if (weights.noise) {
